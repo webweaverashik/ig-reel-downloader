@@ -105,6 +105,48 @@ def print_env_setup():
     print(f"Python executable path: {sys.executable}")
 
 
+def test_ytdlp_direct():
+    """Test yt-dlp directly with a simple command."""
+    print("")
+    print("=" * 50)
+    print("YT-DLP DIRECT TEST")
+    print("=" * 50)
+    
+    test_url = "https://www.instagram.com/reel/C1234567890/"
+    
+    print(f"Testing yt-dlp with URL: {test_url}")
+    print("(This is a fake URL, expecting an error - that's OK)")
+    print("")
+    
+    try:
+        result = subprocess.run(
+            ['yt-dlp', '--dump-json', '--skip-download', '--no-warnings', test_url],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        print(f"Return code: {result.returncode}")
+        if result.stdout:
+            print(f"Stdout: {result.stdout[:200]}")
+        if result.stderr:
+            print(f"Stderr: {result.stderr[:200]}")
+        
+        print("")
+        print("[OK] yt-dlp executed successfully (error expected for fake URL)")
+        return True
+        
+    except FileNotFoundError:
+        print("[ERROR] yt-dlp command not found!")
+        print("")
+        print("Make sure yt-dlp is installed and in your PATH:")
+        print("  pip install yt-dlp")
+        return False
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return False
+
+
 def main():
     print("")
     print("=" * 50)
@@ -113,6 +155,7 @@ def main():
     
     python_ok = check_python_version()
     ytdlp_ok = check_ytdlp()
+    ytdlp_direct_ok = test_ytdlp_direct()
     
     test_instagram_fetch()
     print_env_setup()
@@ -122,10 +165,13 @@ def main():
     print("SUMMARY")
     print("=" * 50)
     
-    print(f"  Python: {'[OK]' if python_ok else '[FAIL]'}")
-    print(f"  yt-dlp: {'[OK]' if ytdlp_ok else '[FAIL]'}")
+    print(f"  Python:      {'[OK]' if python_ok else '[FAIL]'}")
+    print(f"  yt-dlp:      {'[OK]' if ytdlp_ok else '[FAIL]'}")
+    print(f"  yt-dlp test: {'[OK]' if ytdlp_direct_ok else '[FAIL]'}")
     
-    if python_ok and ytdlp_ok:
+    all_ok = python_ok and ytdlp_ok and ytdlp_direct_ok
+    
+    if all_ok:
         print("")
         print("[SUCCESS] All checks passed! Your environment is ready.")
     else:
@@ -133,7 +179,7 @@ def main():
         print("[FAILED] Some checks failed. Please fix the issues above.")
     
     print("")
-    return 0 if (python_ok and ytdlp_ok) else 1
+    return 0 if all_ok else 1
 
 
 if __name__ == '__main__':

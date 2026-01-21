@@ -27,7 +27,6 @@ def get_media_type(url):
 
 def extract_username(info):
     """Extract username from yt-dlp info."""
-    # Try different fields where username might be
     username = info.get('uploader', '')
     if not username:
         username = info.get('uploader_id', '')
@@ -36,7 +35,6 @@ def extract_username(info):
     if not username:
         username = info.get('channel_id', '')
     if not username:
-        # Try to extract from webpage_url
         webpage_url = info.get('webpage_url', '')
         match = re.search(r'instagram\.com/([^/]+)/', webpage_url)
         if match:
@@ -51,7 +49,6 @@ def extract_formats(info):
     raw_formats = info.get('formats', [])
     
     if not raw_formats:
-        # Single format (likely a photo)
         url = info.get('url', '')
         if url:
             formats.append({
@@ -61,11 +58,9 @@ def extract_formats(info):
             })
         return formats
     
-    # Track seen qualities to avoid duplicates
     seen_qualities = set()
     
     for fmt in raw_formats:
-        format_id = fmt.get('format_id', '')
         url = fmt.get('url', '')
         ext = fmt.get('ext', 'mp4')
         height = fmt.get('height', 0)
@@ -74,7 +69,6 @@ def extract_formats(info):
         if not url:
             continue
         
-        # Determine quality label
         if height:
             if height >= 1080:
                 quality = 'HD 1080p'
@@ -85,12 +79,11 @@ def extract_formats(info):
             elif height >= 360:
                 quality = 'SD 360p'
             else:
-                quality = f'{height}p'
+                quality = str(height) + 'p'
         else:
             quality = 'Original'
         
-        # Skip duplicates
-        quality_key = f"{quality}_{ext}"
+        quality_key = quality + '_' + ext
         if quality_key in seen_qualities:
             continue
         seen_qualities.add(quality_key)
@@ -103,10 +96,8 @@ def extract_formats(info):
             'height': height
         })
     
-    # Sort by quality (highest first)
     formats.sort(key=lambda x: x.get('height', 0), reverse=True)
     
-    # Limit to top 3 qualities to avoid clutter
     return formats[:3] if len(formats) > 3 else formats
 
 
@@ -119,7 +110,6 @@ def is_image_url(url):
 def fetch_instagram_info(url):
     """Fetch Instagram media information using yt-dlp."""
     try:
-        # Run yt-dlp with JSON output
         result = subprocess.run(
             ['yt-dlp', '--dump-json', '--skip-download', '--no-warnings', url],
             capture_output=True,
@@ -130,7 +120,6 @@ def fetch_instagram_info(url):
         if result.returncode != 0:
             error_msg = result.stderr.strip()
             
-            # Parse common errors
             if 'Private' in error_msg or 'private' in error_msg:
                 return {'error': 'This content is from a private account'}
             elif 'not exist' in error_msg.lower() or '404' in error_msg:
@@ -140,12 +129,10 @@ def fetch_instagram_info(url):
             elif 'rate' in error_msg.lower() or 'limit' in error_msg.lower():
                 return {'error': 'Rate limited. Please try again later'}
             else:
-                return {'error': f'Failed to fetch: {error_msg[:100]}'}
+                return {'error': 'Failed to fetch: ' + error_msg[:200]}
         
-        # Parse JSON output
         output = result.stdout.strip()
         
-        # Handle multiple JSON objects (carousel posts)
         json_objects = []
         for line in output.split('\n'):
             if line.strip():
@@ -157,25 +144,20 @@ def fetch_instagram_info(url):
         if not json_objects:
             return {'error': 'No media information found'}
         
-        # Use first object for main info
         info = json_objects[0]
         
-        # Determine media type
         media_type = get_media_type(url)
         if media_type == 'post':
-            # Check if it's a photo or video
             ext = info.get('ext', 'mp4')
             if ext in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
                 media_type = 'photo'
             else:
                 media_type = 'video'
         
-        # Extract formats from all items (for carousels)
         all_formats = []
         for obj in json_objects:
             all_formats.extend(extract_formats(obj))
         
-        # Remove duplicates
         seen = set()
         unique_formats = []
         for fmt in all_formats:
@@ -184,7 +166,6 @@ def fetch_instagram_info(url):
                 seen.add(key)
                 unique_formats.append(fmt)
         
-        # Build response
         response = {
             'type': media_type,
             'username': extract_username(info),
@@ -204,7 +185,7 @@ def fetch_instagram_info(url):
     except FileNotFoundError:
         return {'error': 'yt-dlp is not installed. Please install it with: pip install yt-dlp'}
     except Exception as e:
-        return {'error': f'Unexpected error: {str(e)}'}
+        return {'error': 'Unexpected error: ' + str(e)}
 
 
 def main():
@@ -214,13 +195,12 @@ def main():
     
     url = sys.argv[1]
     
-    # Validate URL format
     instagram_patterns = [
-        r'^https?://(www\.)?instagram\.com/p/[\w-]+/?',
-        r'^https?://(www\.)?instagram\.com/reel/[\w-]+/?',
-        r'^https?://(www\.)?instagram\.com/reels/[\w-]+/?',
-        r'^https?://(www\.)?instagram\.com/tv/[\w-]+/?',
-        r'^https?://(www\.)?instagram\.com/[\w.]+/reel/[\w-]+/?'
+        r'^https?://(www\.)?instagram\.com/p/[\w-]+',
+        r'^https?://(www\.)?instagram\.com/reel/[\w-]+',
+        r'^https?://(www\.)?instagram\.com/reels/[\w-]+',
+        r'^https?://(www\.)?instagram\.com/tv/[\w-]+',
+        r'^https?://(www\.)?instagram\.com/[\w.]+/reel/[\w-]+'
     ]
     
     is_valid = any(re.match(pattern, url) for pattern in instagram_patterns)
