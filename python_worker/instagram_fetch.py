@@ -11,6 +11,7 @@ import sys
 import json
 import subprocess
 import re
+import os
 
 
 def get_media_type(url):
@@ -27,6 +28,9 @@ def get_media_type(url):
 
 def extract_username(info):
     """Extract username from yt-dlp info."""
+    if not info:
+        return 'instagram_user'
+    
     username = info.get('uploader', '')
     if not username:
         username = info.get('uploader_id', '')
@@ -43,9 +47,23 @@ def extract_username(info):
     return username or 'instagram_user'
 
 
+def safe_int(value, default=0):
+    """Safely convert value to int, return default if None or invalid."""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
 def extract_formats(info):
     """Extract available formats from yt-dlp info."""
     formats = []
+    
+    if not info:
+        return formats
+    
     raw_formats = info.get('formats', [])
     
     if not raw_formats:
@@ -61,15 +79,19 @@ def extract_formats(info):
     seen_qualities = set()
     
     for fmt in raw_formats:
+        if not fmt:
+            continue
+            
         url = fmt.get('url', '')
-        ext = fmt.get('ext', 'mp4')
-        height = fmt.get('height', 0)
-        width = fmt.get('width', 0)
-        
         if not url:
             continue
+            
+        ext = fmt.get('ext', 'mp4') or 'mp4'
+        height = safe_int(fmt.get('height'), 0)
+        width = safe_int(fmt.get('width'), 0)
         
-        if height:
+        # Determine quality label
+        if height > 0:
             if height >= 1080:
                 quality = 'HD 1080p'
             elif height >= 720:
@@ -79,11 +101,12 @@ def extract_formats(info):
             elif height >= 360:
                 quality = 'SD 360p'
             else:
-                quality = str(height) + 'p'
+                quality = f'{height}p'
         else:
             quality = 'Original'
         
-        quality_key = quality + '_' + ext
+        # Skip duplicates
+        quality_key = f"{quality}_{ext}"
         if quality_key in seen_qualities:
             continue
         seen_qualities.add(quality_key)
@@ -96,81 +119,138 @@ def extract_formats(info):
             'height': height
         })
     
-    formats.sort(key=lambda x: x.get('height', 0), reverse=True)
+    # Sort by quality (highest first) - using safe_int for comparison
+    formats.sort(key=lambda x: safe_int(x.get('height'), 0), reverse=True)
     
+    # Limit to top 3 qualities
     return formats[:3] if len(formats) > 3 else formats
 
 
 def is_image_url(url):
     """Check if URL points to an image."""
+    if not url:
+        return False
     image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
     return any(ext in url.lower() for ext in image_extensions)
+
+
+def get_cookies_path():
+    """Get the path to cookies file if it exists."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    cookies_file = os.path.join(script_dir, 'cookies.txt')
+    if os.path.exists(cookies_file):
+        return cookies_file
+    return None
+
+
+def build_ytdlp_command(url):
+    """Build the yt-dlp command with appropriate options."""
+    cmd = ['yt-dlp', '--dump-json', '--skip-download', '--no-warnings']
+    
+    # Add cookies if available
+    cookies_path = get_cookies_path()
+    if cookies_path:
+        cmd.extend(['--cookies', cookies_path])
+    
+    # Add user agent to avoid detection
+    cmd.extend([
+        '--user-agent', 
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    ])
+    
+    # Add referer
+    cmd.extend(['--referer', 'https://www.instagram.com/'])
+    
+    cmd.append(url)
+    return cmd
 
 
 def fetch_instagram_info(url):
     """Fetch Instagram media information using yt-dlp."""
     try:
+        cmd = build_ytdlp_command(url)
+        
         result = subprocess.run(
-            ['yt-dlp', '--dump-json', '--skip-download', '--no-warnings', url],
+            cmd,
             capture_output=True,
             text=True,
             timeout=60
         )
         
         if result.returncode != 0:
-            error_msg = result.stderr.strip()
+            error_msg = result.stderr.strip() if result.stderr else ''
             
-            if 'Private' in error_msg or 'private' in error_msg:
+            # Parse common errors
+            error_lower = error_msg.lower()
+            if 'private' in error_lower:
                 return {'error': 'This content is from a private account'}
-            elif 'not exist' in error_msg.lower() or '404' in error_msg:
+            elif 'not exist' in error_lower or '404' in error_lower or 'not available' in error_lower:
                 return {'error': 'This post does not exist or has been removed'}
-            elif 'login' in error_msg.lower() or 'authentication' in error_msg.lower():
-                return {'error': 'Login required to access this content'}
-            elif 'rate' in error_msg.lower() or 'limit' in error_msg.lower():
-                return {'error': 'Rate limited. Please try again later'}
+            elif 'login' in error_lower or 'authentication' in error_lower or 'cookies' in error_lower:
+                return {'error': 'Instagram requires login. Please add cookies.txt file to python_worker folder'}
+            elif 'rate' in error_lower or 'limit' in error_lower:
+                return {'error': 'Rate limited by Instagram. Please try again in a few minutes'}
+            elif 'empty' in error_lower:
+                return {'error': 'Instagram returned empty response. Try again or add cookies.txt'}
             else:
-                return {'error': 'Failed to fetch: ' + error_msg[:200]}
+                # Return truncated error
+                return {'error': f'Failed to fetch: {error_msg[:150]}'}
         
-        output = result.stdout.strip()
+        output = result.stdout.strip() if result.stdout else ''
         
+        if not output:
+            return {'error': 'No data received from Instagram'}
+        
+        # Handle multiple JSON objects (carousel posts)
         json_objects = []
         for line in output.split('\n'):
-            if line.strip():
+            line = line.strip()
+            if line:
                 try:
                     json_objects.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue
         
         if not json_objects:
-            return {'error': 'No media information found'}
+            return {'error': 'Could not parse Instagram response'}
         
+        # Use first object for main info
         info = json_objects[0]
         
+        if not info:
+            return {'error': 'Empty response from Instagram'}
+        
+        # Determine media type
         media_type = get_media_type(url)
         if media_type == 'post':
-            ext = info.get('ext', 'mp4')
+            ext = info.get('ext', 'mp4') or 'mp4'
             if ext in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
                 media_type = 'photo'
             else:
                 media_type = 'video'
         
+        # Extract formats from all items (for carousels)
         all_formats = []
         for obj in json_objects:
-            all_formats.extend(extract_formats(obj))
+            if obj:
+                all_formats.extend(extract_formats(obj))
         
+        # Remove duplicates
         seen = set()
         unique_formats = []
         for fmt in all_formats:
-            key = (fmt['quality'], fmt['format'], fmt.get('height', 0))
-            if key not in seen:
-                seen.add(key)
-                unique_formats.append(fmt)
+            if fmt:
+                key = (fmt.get('quality', ''), fmt.get('format', ''), safe_int(fmt.get('height'), 0))
+                if key not in seen:
+                    seen.add(key)
+                    unique_formats.append(fmt)
         
+        # Build response
         response = {
             'type': media_type,
             'username': extract_username(info),
-            'caption': info.get('description', '') or info.get('title', ''),
-            'thumbnail': info.get('thumbnail', ''),
+            'caption': info.get('description', '') or info.get('title', '') or '',
+            'thumbnail': info.get('thumbnail', '') or '',
             'formats': unique_formats if unique_formats else [{
                 'quality': 'Original',
                 'format': 'mp4',
@@ -183,9 +263,23 @@ def fetch_instagram_info(url):
     except subprocess.TimeoutExpired:
         return {'error': 'Request timed out. Please try again'}
     except FileNotFoundError:
-        return {'error': 'yt-dlp is not installed. Please install it with: pip install yt-dlp'}
+        return {'error': 'yt-dlp is not installed. Run: pip install yt-dlp'}
+    except json.JSONDecodeError as e:
+        return {'error': f'Failed to parse response: {str(e)}'}
     except Exception as e:
-        return {'error': 'Unexpected error: ' + str(e)}
+        return {'error': f'Unexpected error: {str(e)}'}
+
+
+def clean_url(url):
+    """Clean Instagram URL by removing tracking parameters."""
+    # Remove query parameters that aren't needed
+    if '?' in url:
+        base_url = url.split('?')[0]
+        # Ensure URL ends properly
+        if not base_url.endswith('/'):
+            base_url += '/'
+        return base_url
+    return url
 
 
 def main():
@@ -193,14 +287,18 @@ def main():
         print(json.dumps({'error': 'No URL provided'}))
         sys.exit(1)
     
-    url = sys.argv[1]
+    url = sys.argv[1].strip()
     
+    # Clean the URL
+    url = clean_url(url)
+    
+    # Validate URL format
     instagram_patterns = [
-        r'^https?://(www\.)?instagram\.com/p/[\w-]+',
-        r'^https?://(www\.)?instagram\.com/reel/[\w-]+',
-        r'^https?://(www\.)?instagram\.com/reels/[\w-]+',
-        r'^https?://(www\.)?instagram\.com/tv/[\w-]+',
-        r'^https?://(www\.)?instagram\.com/[\w.]+/reel/[\w-]+'
+        r'^https?://(www\.)?instagram\.com/p/[\w-]+/?',
+        r'^https?://(www\.)?instagram\.com/reel/[\w-]+/?',
+        r'^https?://(www\.)?instagram\.com/reels/[\w-]+/?',
+        r'^https?://(www\.)?instagram\.com/tv/[\w-]+/?',
+        r'^https?://(www\.)?instagram\.com/[\w.]+/reel/[\w-]+/?'
     ]
     
     is_valid = any(re.match(pattern, url) for pattern in instagram_patterns)
