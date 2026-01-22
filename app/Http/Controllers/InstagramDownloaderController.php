@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 use Symfony\Component\Process\Process;
 
 class InstagramDownloaderController extends Controller
@@ -148,31 +147,51 @@ class InstagramDownloaderController extends Controller
 
         $process = new Process([$pythonPath, $scriptPath, $url]);
 
-        $process->setTimeout(60);
+        $process->setTimeout(90); // Increased timeout
 
-        try {
-            $process->mustRun();
-        } catch (ProcessFailedException $e) {
-            $errorOutput = $process->getErrorOutput();
-            Log::error("Python process failed: {$errorOutput}");
-            throw new \Exception($errorOutput ?: 'Failed to process Instagram URL');
+        $process->run(); // Run without throwing exception
+
+        $stdout   = $process->getOutput();
+        $stderr   = $process->getErrorOutput();
+        $exitCode = $process->getExitCode();
+
+        Log::info("Python exit code: {$exitCode}");
+        Log::info("Python stdout: {$stdout}");
+        Log::info("Python stderr: {$stderr}");
+
+        // Try to parse stdout as JSON first
+        if (! empty($stdout)) {
+            $result = json_decode($stdout, true);
+
+            if (json_last_error() === JSON_ERROR_NONE) {
+                if (isset($result['error'])) {
+                    throw new \Exception($result['error']);
+                }
+                return $result;
+            }
         }
 
-        $output = $process->getOutput();
-        Log::info("Python output: {$output}");
+        // If we got here, something went wrong
+        $errorMessage = '';
 
-        $result = json_decode($output, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('JSON decode error: ' . json_last_error_msg());
-            throw new \Exception('Invalid response from Python worker: ' . $output);
+        // Try to extract error from stderr (debug logs)
+        if (! empty($stderr)) {
+            // Check if there's useful error info in stderr
+            if (strpos($stderr, 'error') !== false || strpos($stderr, 'Error') !== false) {
+                $errorMessage = $stderr;
+            }
         }
 
-        if (isset($result['error'])) {
-            throw new \Exception($result['error']);
+        // Try to parse stdout even if it has error
+        if (! empty($stdout)) {
+            $result = json_decode($stdout, true);
+            if (json_last_error() === JSON_ERROR_NONE && isset($result['error'])) {
+                throw new \Exception($result['error']);
+            }
+            $errorMessage = $errorMessage ?: "Invalid response: {$stdout}";
         }
 
-        return $result;
+        throw new \Exception($errorMessage ?: 'Failed to process Instagram URL. Check server logs for details.');
     }
 
     /**

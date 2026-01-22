@@ -14,6 +14,11 @@ import re
 import os
 
 
+def debug_log(message):
+    """Print debug message to stderr (won't interfere with JSON output)."""
+    print(f"[DEBUG] {message}", file=sys.stderr)
+
+
 def get_media_type(url):
     """Determine the type of Instagram media from URL."""
     if '/reel/' in url or '/reels/' in url:
@@ -57,6 +62,13 @@ def safe_int(value, default=0):
         return default
 
 
+def safe_str(value, default=''):
+    """Safely convert value to string."""
+    if value is None:
+        return default
+    return str(value)
+
+
 def extract_formats(info):
     """Extract available formats from yt-dlp info."""
     formats = []
@@ -86,7 +98,7 @@ def extract_formats(info):
         if not url:
             continue
             
-        ext = fmt.get('ext', 'mp4') or 'mp4'
+        ext = safe_str(fmt.get('ext'), 'mp4')
         height = safe_int(fmt.get('height'), 0)
         width = safe_int(fmt.get('width'), 0)
         
@@ -134,41 +146,59 @@ def is_image_url(url):
     return any(ext in url.lower() for ext in image_extensions)
 
 
-def get_cookies_path():
-    """Get the path to cookies file if it exists."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    cookies_file = os.path.join(script_dir, 'cookies.txt')
-    if os.path.exists(cookies_file):
-        return cookies_file
-    return None
-
-
-def build_ytdlp_command(url):
-    """Build the yt-dlp command with appropriate options."""
-    cmd = ['yt-dlp', '--dump-json', '--skip-download', '--no-warnings']
+def find_ytdlp():
+    """Find yt-dlp executable path."""
+    # Common locations
+    possible_paths = [
+        'yt-dlp',  # In PATH
+        '/usr/local/bin/yt-dlp',
+        '/usr/bin/yt-dlp',
+        os.path.expanduser('~/.local/bin/yt-dlp'),
+    ]
     
-    # Add cookies if available
-    cookies_path = get_cookies_path()
-    if cookies_path:
-        cmd.extend(['--cookies', cookies_path])
+    # On Windows, also check Scripts folder
+    if sys.platform == 'win32':
+        possible_paths.extend([
+            os.path.join(os.path.dirname(sys.executable), 'Scripts', 'yt-dlp.exe'),
+            os.path.join(os.path.dirname(sys.executable), 'yt-dlp.exe'),
+        ])
     
-    # Add user agent to avoid detection
-    cmd.extend([
-        '--user-agent', 
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    ])
+    for path in possible_paths:
+        try:
+            result = subprocess.run(
+                [path, '--version'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            if result.returncode == 0:
+                return path
+        except:
+            continue
     
-    # Add referer
-    cmd.extend(['--referer', 'https://www.instagram.com/'])
-    
-    cmd.append(url)
-    return cmd
+    return 'yt-dlp'  # Default, hope it's in PATH
 
 
 def fetch_instagram_info(url):
     """Fetch Instagram media information using yt-dlp."""
     try:
-        cmd = build_ytdlp_command(url)
+        ytdlp_path = find_ytdlp()
+        debug_log(f"Using yt-dlp: {ytdlp_path}")
+        
+        # Build command with options to bypass some restrictions
+        cmd = [
+            ytdlp_path,
+            '--dump-json',
+            '--skip-download',
+            '--no-warnings',
+            '--no-check-certificates',
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--referer', 'https://www.instagram.com/',
+            '--add-header', 'Accept-Language:en-US,en;q=0.9',
+            url
+        ]
+        
+        debug_log(f"Running command: {' '.join(cmd)}")
         
         result = subprocess.run(
             cmd,
@@ -177,8 +207,12 @@ def fetch_instagram_info(url):
             timeout=60
         )
         
+        debug_log(f"Return code: {result.returncode}")
+        debug_log(f"Stdout length: {len(result.stdout) if result.stdout else 0}")
+        debug_log(f"Stderr: {result.stderr[:200] if result.stderr else 'None'}")
+        
         if result.returncode != 0:
-            error_msg = result.stderr.strip() if result.stderr else ''
+            error_msg = safe_str(result.stderr, '').strip()
             
             # Parse common errors
             error_lower = error_msg.lower()
@@ -186,20 +220,20 @@ def fetch_instagram_info(url):
                 return {'error': 'This content is from a private account'}
             elif 'not exist' in error_lower or '404' in error_lower or 'not available' in error_lower:
                 return {'error': 'This post does not exist or has been removed'}
-            elif 'login' in error_lower or 'authentication' in error_lower or 'cookies' in error_lower:
-                return {'error': 'Instagram requires login. Please add cookies.txt file to python_worker folder'}
+            elif 'login' in error_lower or 'authentication' in error_lower:
+                return {'error': 'Instagram requires login for this content. This post may not be publicly accessible.'}
             elif 'rate' in error_lower or 'limit' in error_lower:
                 return {'error': 'Rate limited by Instagram. Please try again in a few minutes'}
             elif 'empty' in error_lower:
-                return {'error': 'Instagram returned empty response. Try again or add cookies.txt'}
+                return {'error': 'Instagram returned empty response. The post may require login or is not accessible.'}
             else:
                 # Return truncated error
-                return {'error': f'Failed to fetch: {error_msg[:150]}'}
+                return {'error': f'yt-dlp error: {error_msg[:150]}'}
         
-        output = result.stdout.strip() if result.stdout else ''
+        output = safe_str(result.stdout, '').strip()
         
         if not output:
-            return {'error': 'No data received from Instagram'}
+            return {'error': 'No data received from Instagram. The post may require login.'}
         
         # Handle multiple JSON objects (carousel posts)
         json_objects = []
@@ -223,7 +257,7 @@ def fetch_instagram_info(url):
         # Determine media type
         media_type = get_media_type(url)
         if media_type == 'post':
-            ext = info.get('ext', 'mp4') or 'mp4'
+            ext = safe_str(info.get('ext'), 'mp4')
             if ext in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
                 media_type = 'photo'
             else:
@@ -249,12 +283,12 @@ def fetch_instagram_info(url):
         response = {
             'type': media_type,
             'username': extract_username(info),
-            'caption': info.get('description', '') or info.get('title', '') or '',
-            'thumbnail': info.get('thumbnail', '') or '',
+            'caption': safe_str(info.get('description')) or safe_str(info.get('title')) or '',
+            'thumbnail': safe_str(info.get('thumbnail')) or '',
             'formats': unique_formats if unique_formats else [{
                 'quality': 'Original',
                 'format': 'mp4',
-                'url': info.get('url', '')
+                'url': safe_str(info.get('url'))
             }]
         }
         
@@ -262,12 +296,12 @@ def fetch_instagram_info(url):
         
     except subprocess.TimeoutExpired:
         return {'error': 'Request timed out. Please try again'}
-    except FileNotFoundError:
-        return {'error': 'yt-dlp is not installed. Run: pip install yt-dlp'}
+    except FileNotFoundError as e:
+        return {'error': f'yt-dlp not found. Please install: pip install yt-dlp. Details: {str(e)}'}
     except json.JSONDecodeError as e:
         return {'error': f'Failed to parse response: {str(e)}'}
     except Exception as e:
-        return {'error': f'Unexpected error: {str(e)}'}
+        return {'error': f'Unexpected error: {type(e).__name__}: {str(e)}'}
 
 
 def clean_url(url):
@@ -279,6 +313,8 @@ def clean_url(url):
         if not base_url.endswith('/'):
             base_url += '/'
         return base_url
+    if not url.endswith('/'):
+        url += '/'
     return url
 
 
@@ -288,9 +324,11 @@ def main():
         sys.exit(1)
     
     url = sys.argv[1].strip()
+    debug_log(f"Input URL: {url}")
     
     # Clean the URL
     url = clean_url(url)
+    debug_log(f"Cleaned URL: {url}")
     
     # Validate URL format
     instagram_patterns = [
