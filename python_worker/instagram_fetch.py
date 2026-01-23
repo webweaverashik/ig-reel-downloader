@@ -146,8 +146,10 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
 
             # If yt-dlp crashed (traceback), surface as a worker error (not cookies)
             if 'traceback' in combined or 'exception' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"yt-dlp crashed while fetching metadata. Details: {snippet}", "ytdlp_crashed"
+                # Return more context for debugging (first ~4000 chars)
+                details = combined_raw.strip()
+                details = details[:4000] if len(details) > 4000 else details
+                return None, f"yt-dlp crashed while fetching metadata. Details: {details}", "ytdlp_crashed"
 
             # Cookie-related errors vary; match broader keywords
             cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
@@ -244,8 +246,9 @@ def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', want_th
                 return None, f"No downloadable video formats found for this URL. Try updating yt-dlp. Details: {snippet}", "no_formats"
 
             if 'traceback' in combined or 'exception' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"yt-dlp crashed during download. Details: {snippet}", "ytdlp_crashed"
+                details = combined_raw.strip()
+                details = details[:4000] if len(details) > 4000 else details
+                return None, f"yt-dlp crashed during download. Details: {details}", "ytdlp_crashed"
 
             cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
             if any(k in combined for k in cookie_keywords):
@@ -301,6 +304,18 @@ def main():
     # Validate URL
     if not validate_url(url):
         log_error("Invalid Instagram URL format.", "invalid_url")
+
+    # Preflight: confirm yt-dlp binary is runnable (helps diagnose VPS-only crashes)
+    try:
+        ver = subprocess.run([ytdlp_bin, '--version'], capture_output=True, text=True, timeout=15)
+        if ver.returncode != 0:
+            out = ((ver.stderr or '') + "\n" + (ver.stdout or '')).strip()
+            out = out[:800] if len(out) > 800 else out
+            log_error(f"yt-dlp failed to run. Binary: {ytdlp_bin}. Details: {out}", "ytdlp_crashed")
+    except FileNotFoundError:
+        log_error(f"yt-dlp binary not found: {ytdlp_bin}", "ytdlp_missing")
+    except Exception as e:
+        log_error(f"yt-dlp preflight check failed. Binary: {ytdlp_bin}. Error: {str(e)}", "ytdlp_crashed")
     
     # Check cookies file exists
     if not os.path.isfile(cookies_path):
