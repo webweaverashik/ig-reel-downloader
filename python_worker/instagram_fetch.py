@@ -144,6 +144,11 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
                 snippet = combined_raw.replace('\n', ' ')[:260]
                 return None, f"No downloadable video formats found for this URL. Try updating yt-dlp. Details: {snippet}", "no_formats"
 
+            # If yt-dlp crashed (traceback), surface as a worker error (not cookies)
+            if 'traceback' in combined or 'exception' in combined:
+                snippet = combined_raw.replace('\n', ' ')[:260]
+                return None, f"yt-dlp crashed while fetching metadata. Details: {snippet}", "ytdlp_crashed"
+
             # Cookie-related errors vary; match broader keywords
             cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
             if any(k in combined for k in cookie_keywords):
@@ -233,6 +238,10 @@ def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp'):
             if 'no video formats found' in combined:
                 snippet = combined_raw.replace('\n', ' ')[:260]
                 return None, f"No downloadable video formats found for this URL. Try updating yt-dlp. Details: {snippet}", "no_formats"
+
+            if 'traceback' in combined or 'exception' in combined:
+                snippet = combined_raw.replace('\n', ' ')[:260]
+                return None, f"yt-dlp crashed during download. Details: {snippet}", "ytdlp_crashed"
 
             cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
             if any(k in combined for k in cookie_keywords):
