@@ -2,9 +2,6 @@
  * Instagram Downloader - Pure JavaScript
  * Phase 1: Core Downloader Functionality
  * 
- * This file should be placed in public/js/ for Laravel to serve it.
- * Copy from resources/js/instagram-downloader.js
- * 
  * Features:
  * - Instagram URL validation
  * - Async fetch with progress handling

@@ -3,8 +3,25 @@
 use App\Http\Controllers\InstagramDownloaderController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [InstagramDownloaderController::class, 'index'])->name('instagram.downloader');
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Phase 1: Instagram Downloader Routes
+|
+*/
 
-Route::get('/instagram-downloader', [InstagramDownloaderController::class, 'index'])->name('instagram.downloader');
+// Instagram Downloader Routes
+Route::get('/instagram-downloader', [InstagramDownloaderController::class, 'index'])
+    ->name('instagram.downloader');
 
-Route::post('/api/instagram/fetch', [InstagramDownloaderController::class, 'fetch'])->name('instagram.fetch');
+Route::post('/instagram-downloader/fetch', [InstagramDownloaderController::class, 'fetch'])
+    ->name('instagram.fetch');
+
+Route::get('/instagram-downloader/download/{folder}/{filename}', [InstagramDownloaderController::class, 'download'])
+    ->name('instagram.download')
+    ->where('filename', '.*');
+
+Route::get('/instagram-downloader/download-all/{folder}', [InstagramDownloaderController::class, 'downloadAll'])
+    ->name('instagram.download.all');
