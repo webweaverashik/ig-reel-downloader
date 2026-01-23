@@ -1,9 +1,12 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use ZipArchive;
 
 class InstagramDownloaderController extends Controller
@@ -14,6 +17,14 @@ class InstagramDownloaderController extends Controller
     private function getPythonPath(): string
     {
         return config('services.python.path', 'python3');
+    }
+
+    /**
+     * yt-dlp executable path from .env
+     */
+    private function getYtdlpPath(): string
+    {
+        return config('services.ytdlp.path', 'yt-dlp');
     }
 
     /**
@@ -31,66 +42,69 @@ class InstagramDownloaderController extends Controller
     {
         // Validate the URL
         $request->validate([
-            'url' => ['required', 'url', 'regex:/^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv|stories)\/[\w\-]+/i'],
+            'url' => ['required', 'url', 'regex:/^https?:\/\/(www\.)?instagram\.com\/(p|reel|reels|tv|stories)\/[\w\-]+/i']
         ], [
             'url.required' => 'Please enter an Instagram URL.',
-            'url.url'      => 'Please enter a valid URL.',
-            'url.regex'    => 'Please enter a valid Instagram URL (post, reel, video, or story).',
+            'url.url' => 'Please enter a valid URL.',
+            'url.regex' => 'Please enter a valid Instagram URL (post, reel, video, or story).'
         ]);
 
         $url = $request->input('url');
-
+        
         try {
             // Generate unique folder for this download session
-            $sessionId    = Str::uuid()->toString();
+            $sessionId = Str::uuid()->toString();
             $downloadPath = storage_path('app/downloads/' . $sessionId);
-
+            
             // Create download directory
-            if (! file_exists($downloadPath)) {
+            if (!file_exists($downloadPath)) {
                 mkdir($downloadPath, 0755, true);
             }
 
             // Path to Python script
             $pythonScript = base_path('python_worker/instagram_fetch.py');
-            $cookiesPath  = base_path('python_worker/cookies/instagram.txt');
+            $cookiesPath = base_path('python_worker/cookies/instagram.txt');
 
             // Check if cookies file exists
-            if (! file_exists($cookiesPath)) {
+            if (!file_exists($cookiesPath)) {
                 return response()->json([
-                    'success'    => false,
-                    'error'      => 'Instagram cookies not configured. Please add cookies file.',
-                    'error_type' => 'cookies_missing',
+                    'success' => false,
+                    'error' => 'Instagram cookies not configured. Please add cookies file.',
+                    'error_type' => 'cookies_missing'
                 ], 400);
             }
 
             // Build the command
             $python = $this->getPythonPath();
-
+            $ytdlp = $this->getYtdlpPath();
+            
             // Handle Windows paths with spaces
             if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
                 $command = sprintf(
-                    '"%s" %s %s %s %s 2>&1',
+                    '"%s" %s %s %s %s %s 2>&1',
                     $python,
                     escapeshellarg($pythonScript),
                     escapeshellarg($url),
                     escapeshellarg($downloadPath),
-                    escapeshellarg($cookiesPath)
+                    escapeshellarg($cookiesPath),
+                    escapeshellarg($ytdlp)
                 );
             } else {
                 $command = sprintf(
-                    '%s %s %s %s %s 2>&1',
+                    '%s %s %s %s %s %s 2>&1',
                     escapeshellcmd($python),
                     escapeshellarg($pythonScript),
                     escapeshellarg($url),
                     escapeshellarg($downloadPath),
-                    escapeshellarg($cookiesPath)
+                    escapeshellarg($cookiesPath),
+                    escapeshellarg($ytdlp)
                 );
             }
 
             Log::info('Executing Instagram fetch command', ['command' => $command]);
 
             // Execute Python script
-            $output     = [];
+            $output = [];
             $returnCode = 0;
             exec($command, $output, $returnCode);
 
@@ -110,19 +124,19 @@ class InstagramDownloaderController extends Controller
             if ($jsonOutput === null) {
                 Log::error('Failed to parse Python output', ['output' => $outputString]);
                 return response()->json([
-                    'success'    => false,
-                    'error'      => 'Failed to process Instagram content. Please try again.',
+                    'success' => false,
+                    'error' => 'Failed to process Instagram content. Please try again.',
                     'error_type' => 'parse_error',
-                    'debug'      => config('app.debug') ? $outputString : null,
+                    'debug' => config('app.debug') ? $outputString : null
                 ], 500);
             }
 
             // Check for errors from Python script
             if (isset($jsonOutput['error'])) {
                 return response()->json([
-                    'success'    => false,
-                    'error'      => $jsonOutput['error'],
-                    'error_type' => $jsonOutput['error_type'] ?? 'unknown',
+                    'success' => false,
+                    'error' => $jsonOutput['error'],
+                    'error_type' => $jsonOutput['error_type'] ?? 'unknown'
                 ], 400);
             }
 
@@ -130,10 +144,10 @@ class InstagramDownloaderController extends Controller
             if (isset($jsonOutput['items']) && is_array($jsonOutput['items'])) {
                 foreach ($jsonOutput['items'] as &$item) {
                     if (isset($item['path'])) {
-                        $filename             = basename($item['path']);
+                        $filename = basename($item['path']);
                         $item['download_url'] = route('instagram.download', [
-                            'folder'   => $sessionId,
-                            'filename' => $filename,
+                            'folder' => $sessionId,
+                            'filename' => $filename
                         ]);
                         // Keep original path for reference but don't expose it
                         unset($item['path']);
@@ -143,22 +157,22 @@ class InstagramDownloaderController extends Controller
 
             // Add download all URL
             $jsonOutput['download_all_url'] = route('instagram.download.all', ['folder' => $sessionId]);
-            $jsonOutput['session_id']       = $sessionId;
-            $jsonOutput['success']          = true;
+            $jsonOutput['session_id'] = $sessionId;
+            $jsonOutput['success'] = true;
 
             return response()->json($jsonOutput);
 
         } catch (\Exception $e) {
             Log::error('Instagram fetch error', [
                 'message' => $e->getMessage(),
-                'trace'   => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
-                'success'    => false,
-                'error'      => 'An unexpected error occurred. Please try again.',
+                'success' => false,
+                'error' => 'An unexpected error occurred. Please try again.',
                 'error_type' => 'exception',
-                'debug'      => config('app.debug') ? $e->getMessage() : null,
+                'debug' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -169,23 +183,23 @@ class InstagramDownloaderController extends Controller
     public function download(string $folder, string $filename)
     {
         // Sanitize inputs to prevent directory traversal
-        $folder   = basename($folder);
+        $folder = basename($folder);
         $filename = basename($filename);
-
+        
         $filePath = storage_path('app/downloads/' . $folder . '/' . $filename);
 
-        if (! file_exists($filePath)) {
+        if (!file_exists($filePath)) {
             abort(404, 'File not found');
         }
 
         // Determine MIME type
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $mimeTypes = [
-            'mp4'  => 'video/mp4',
+            'mp4' => 'video/mp4',
             'webm' => 'video/webm',
-            'jpg'  => 'image/jpeg',
+            'jpg' => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png'  => 'image/png',
+            'png' => 'image/png',
             'webp' => 'image/webp',
         ];
         $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
@@ -201,22 +215,22 @@ class InstagramDownloaderController extends Controller
     public function downloadAll(string $folder)
     {
         // Sanitize folder name
-        $folder     = basename($folder);
+        $folder = basename($folder);
         $folderPath = storage_path('app/downloads/' . $folder);
 
-        if (! is_dir($folderPath)) {
+        if (!is_dir($folderPath)) {
             abort(404, 'Download folder not found');
         }
 
         $files = glob($folderPath . '/*');
-
+        
         if (empty($files)) {
             abort(404, 'No files found');
         }
 
         // Create ZIP file
         $zipFileName = 'instagram_download_' . $folder . '.zip';
-        $zipPath     = storage_path('app/downloads/' . $zipFileName);
+        $zipPath = storage_path('app/downloads/' . $zipFileName);
 
         $zip = new ZipArchive();
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {

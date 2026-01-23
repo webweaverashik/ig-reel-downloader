@@ -4,7 +4,7 @@ Instagram Downloader - Python Worker
 Phase 1: Cookie-based downloading using yt-dlp
 
 Usage:
-    python instagram_fetch.py <instagram_url> <download_path> <cookies_path>
+    python instagram_fetch.py <instagram_url> <download_path> <cookies_path> <ytdlp_path>
 
 Outputs JSON to stdout with:
 - type: reel | video | photo | carousel
@@ -27,6 +27,9 @@ import json
 import subprocess
 import re
 from pathlib import Path
+
+# Global yt-dlp path (set in main)
+YTDLP_PATH = 'yt-dlp'
 
 
 def log_error(message, error_type="unknown"):
@@ -103,7 +106,7 @@ def get_quality_label(info_dict):
 def fetch_metadata(url, cookies_path):
     """Fetch metadata using yt-dlp --dump-json."""
     cmd = [
-        'yt-dlp',
+        YTDLP_PATH,
         '--cookies', cookies_path,
         '--dump-json',
         '--no-download',
@@ -175,7 +178,7 @@ def download_media(url, download_path, cookies_path):
     output_template = os.path.join(download_path, '%(id)s_%(autonumber)s.%(ext)s')
     
     cmd = [
-        'yt-dlp',
+        YTDLP_PATH,
         '--cookies', cookies_path,
         '--no-warnings',
         '--no-playlist-reverse',
@@ -230,13 +233,23 @@ def download_media(url, download_path, cookies_path):
 
 
 def main():
+    global YTDLP_PATH
+    
     # Parse arguments
-    if len(sys.argv) != 4:
-        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_path>", "invalid_args")
+    if len(sys.argv) < 4:
+        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_path> [ytdlp_path]", "invalid_args")
     
     url = sys.argv[1]
     download_path = sys.argv[2]
     cookies_path = sys.argv[3]
+    
+    # Set yt-dlp path (optional 4th argument, defaults to 'yt-dlp')
+    if len(sys.argv) >= 5:
+        YTDLP_PATH = sys.argv[4]
+    
+    # Verify yt-dlp exists at specified path
+    if YTDLP_PATH != 'yt-dlp' and not os.path.isfile(YTDLP_PATH):
+        log_error(f"yt-dlp not found at: {YTDLP_PATH}", "ytdlp_not_found")
     
     # Validate URL
     if not validate_url(url):
