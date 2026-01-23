@@ -4,7 +4,7 @@ Instagram Downloader - Python Worker
 Phase 1: Cookie-based downloading using yt-dlp
 
 Usage:
-    python instagram_fetch.py <instagram_url> <download_path> <cookies_path> <ytdlp_path>
+    python instagram_fetch.py <instagram_url> <download_path> <cookies_path> [yt_dlp_path]
 
 Outputs JSON to stdout with:
 - type: reel | video | photo | carousel
@@ -27,9 +27,6 @@ import json
 import subprocess
 import re
 from pathlib import Path
-
-# Global yt-dlp path (set in main)
-YTDLP_PATH = 'yt-dlp'
 
 
 def log_error(message, error_type="unknown"):
@@ -103,17 +100,17 @@ def get_quality_label(info_dict):
     return 'Original'
 
 
-def fetch_metadata(url, cookies_path):
+def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
     """Fetch metadata using yt-dlp --dump-json."""
     cmd = [
-        YTDLP_PATH,
+        ytdlp_bin,
         '--cookies', cookies_path,
         '--dump-json',
         '--no-download',
         '--no-warnings',
         url
     ]
-    
+
     try:
         result = subprocess.run(
             cmd,
@@ -121,27 +118,32 @@ def fetch_metadata(url, cookies_path):
             text=True,
             timeout=60
         )
-        
+
         if result.returncode != 0:
-            stderr = result.stderr.lower()
-            
-            if 'login' in stderr or 'authentication' in stderr:
+            stderr = (result.stderr or '').lower()
+            stdout = (result.stdout or '').lower()
+            combined = stderr + "\n" + stdout
+
+            if 'login' in combined or 'authentication' in combined:
                 return None, "Login required. Cookies may be expired.", "login_required"
-            if 'private' in stderr:
+            if 'private' in combined:
                 return None, "This content is from a private account.", "private_content"
-            if 'not found' in stderr or '404' in stderr:
+            if 'not found' in combined or '404' in combined:
                 return None, "This post has been removed or doesn't exist.", "not_found"
-            if 'rate' in stderr or 'too many' in stderr:
+            if 'rate' in combined or 'too many' in combined:
                 return None, "Rate limited by Instagram. Please try again later.", "rate_limited"
-            if 'cookies' in stderr:
-                return None, "Cookie error. Please check cookie configuration.", "cookies_error"
-            
-            return None, f"Failed to fetch content: {result.stderr[:200]}", "fetch_error"
-        
+            if 'cookie' in combined:
+                # Include a small snippet for debugging. Laravel decides whether to expose it.
+                snippet = (result.stderr or result.stdout or '').strip().replace('\n', ' ')[:220]
+                return None, f"Cookie error. Please check cookie configuration. Details: {snippet}", "cookies_error"
+
+            snippet = (result.stderr or result.stdout or '').strip().replace('\n', ' ')[:220]
+            return None, f"Failed to fetch content. Details: {snippet}", "fetch_error"
+
         # Parse JSON output (might be multiple lines for carousel)
         output_lines = result.stdout.strip().split('\n')
         entries = []
-        
+
         for line in output_lines:
             if line.strip():
                 try:
@@ -149,36 +151,35 @@ def fetch_metadata(url, cookies_path):
                     entries.append(entry)
                 except json.JSONDecodeError:
                     continue
-        
+
         if not entries:
             return None, "No content found at this URL.", "no_content"
-        
+
         # Return first entry as main info, with all entries for carousel
         main_info = entries[0].copy()
         if len(entries) > 1:
             main_info['entries'] = entries
             main_info['_type'] = 'playlist'
-        
+
         return main_info, None, None
-        
+
     except subprocess.TimeoutExpired:
         return None, "Request timed out. Please try again.", "timeout"
     except FileNotFoundError:
-        return None, "yt-dlp is not installed or not in PATH.", "ytdlp_missing"
+        return None, f"yt-dlp binary not found: {ytdlp_bin}", "ytdlp_missing"
     except Exception as e:
         return None, f"Unexpected error: {str(e)}", "exception"
 
-
-def download_media(url, download_path, cookies_path):
+def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp'):
     """Download media using yt-dlp."""
     # Ensure download path exists
     Path(download_path).mkdir(parents=True, exist_ok=True)
-    
+
     # Build output template
     output_template = os.path.join(download_path, '%(id)s_%(autonumber)s.%(ext)s')
-    
+
     cmd = [
-        YTDLP_PATH,
+        ytdlp_bin,
         '--cookies', cookies_path,
         '--no-warnings',
         '--no-playlist-reverse',
@@ -188,7 +189,7 @@ def download_media(url, download_path, cookies_path):
         '--convert-thumbnails', 'jpg',
         url
     ]
-    
+
     try:
         result = subprocess.run(
             cmd,
@@ -196,60 +197,55 @@ def download_media(url, download_path, cookies_path):
             text=True,
             timeout=300  # 5 minute timeout for downloads
         )
-        
+
         if result.returncode != 0:
-            stderr = result.stderr.lower()
-            
-            if 'login' in stderr or 'authentication' in stderr:
+            stderr = (result.stderr or '').lower()
+            stdout = (result.stdout or '').lower()
+            combined = stderr + "\n" + stdout
+
+            if 'login' in combined or 'authentication' in combined:
                 return None, "Login required. Cookies may be expired.", "login_required"
-            if 'private' in stderr:
+            if 'private' in combined:
                 return None, "This content is from a private account.", "private_content"
-            if 'not found' in stderr or '404' in stderr:
+            if 'not found' in combined or '404' in combined:
                 return None, "This post has been removed or doesn't exist.", "not_found"
-            if 'rate' in stderr or 'too many' in stderr:
+            if 'rate' in combined or 'too many' in combined:
                 return None, "Rate limited by Instagram. Please try again later.", "rate_limited"
-            
+            if 'cookie' in combined:
+                snippet = (result.stderr or result.stdout or '').strip().replace('\n', ' ')[:220]
+                return None, f"Cookie error during download. Details: {snippet}", "cookies_error"
+
             # Check if files were downloaded despite error
             downloaded_files = list(Path(download_path).glob('*'))
             media_files = [f for f in downloaded_files if f.suffix.lower() in ['.mp4', '.webm', '.jpg', '.jpeg', '.png', '.webp']]
-            
+
             if not media_files:
-                return None, f"Download failed: {result.stderr[:200]}", "download_error"
-        
+                snippet = (result.stderr or result.stdout or '').strip().replace('\n', ' ')[:220]
+                return None, f"Download failed. Details: {snippet}", "download_error"
+
         # Find downloaded files
         downloaded_files = list(Path(download_path).glob('*'))
         media_files = [f for f in downloaded_files if f.suffix.lower() in ['.mp4', '.webm', '.jpg', '.jpeg', '.png', '.webp'] and '.thumb' not in f.stem]
-        thumbnail_files = [f for f in downloaded_files if '.thumb' in f.stem or f.stem.endswith('_thumbnail')]
-        
+
         if not media_files:
             return None, "No media files were downloaded.", "no_files"
-        
+
         return media_files, None, None
-        
+
     except subprocess.TimeoutExpired:
         return None, "Download timed out. The file may be too large.", "timeout"
     except Exception as e:
         return None, f"Download error: {str(e)}", "exception"
 
-
 def main():
-    global YTDLP_PATH
-    
     # Parse arguments
-    if len(sys.argv) < 4:
-        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_path> [ytdlp_path]", "invalid_args")
+    if len(sys.argv) not in (4, 5):
+        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_path> [yt_dlp_path]", "invalid_args")
     
     url = sys.argv[1]
     download_path = sys.argv[2]
     cookies_path = sys.argv[3]
-    
-    # Set yt-dlp path (optional 4th argument, defaults to 'yt-dlp')
-    if len(sys.argv) >= 5:
-        YTDLP_PATH = sys.argv[4]
-    
-    # Verify yt-dlp exists at specified path
-    if YTDLP_PATH != 'yt-dlp' and not os.path.isfile(YTDLP_PATH):
-        log_error(f"yt-dlp not found at: {YTDLP_PATH}", "ytdlp_not_found")
+    ytdlp_bin = sys.argv[4] if len(sys.argv) == 5 and sys.argv[4] else 'yt-dlp'
     
     # Validate URL
     if not validate_url(url):
@@ -264,13 +260,13 @@ def main():
         log_error("Cookies file is empty. Please add valid Instagram cookies.", "cookies_empty")
     
     # Fetch metadata first
-    info_dict, error, error_type = fetch_metadata(url, cookies_path)
+    info_dict, error, error_type = fetch_metadata(url, cookies_path, ytdlp_bin=ytdlp_bin)
     
     if error:
         log_error(error, error_type)
     
     # Download media
-    media_files, error, error_type = download_media(url, download_path, cookies_path)
+    media_files, error, error_type = download_media(url, download_path, cookies_path, ytdlp_bin=ytdlp_bin)
     
     if error:
         log_error(error, error_type)
