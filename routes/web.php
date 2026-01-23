@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Instagram Downloader Routes
+Route::get('/', [InstagramDownloaderController::class, 'index'])
+    ->name('instagram.downloader');
+
 Route::get('/instagram-downloader', [InstagramDownloaderController::class, 'index'])
     ->name('instagram.downloader');
 
