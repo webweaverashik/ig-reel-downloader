@@ -188,7 +188,7 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
     except Exception as e:
         return None, f"Unexpected error: {str(e)}", "exception"
 
-def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp'):
+def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', want_thumbnails=True):
     """Download media using yt-dlp."""
     # Ensure download path exists
     Path(download_path).mkdir(parents=True, exist_ok=True)
@@ -203,10 +203,14 @@ def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp'):
         '--no-playlist-reverse',
         '-o', output_template,
         '--merge-output-format', 'mp4',
-        '--write-thumbnail',
-        '--convert-thumbnails', 'jpg',
-        url
     ]
+
+    # Only write thumbnails for video/reel content.
+    # For image posts/carousels, thumbnails are the media itself and writing thumbnails causes confusion/broken previews.
+    if want_thumbnails:
+        cmd += ['--write-thumbnail', '--convert-thumbnails', 'jpg']
+
+    cmd += [url]
 
     try:
         result = subprocess.run(
@@ -313,7 +317,10 @@ def main():
         log_error(error, error_type)
     
     # Download media
-    media_files, error, error_type = download_media(url, download_path, cookies_path, ytdlp_bin=ytdlp_bin)
+    # Only generate thumbnails for reels/videos (not for image posts/carousels)
+    url_lower = url.lower()
+    want_thumbnails = ('/reel/' in url_lower) or ('/reels/' in url_lower) or ('/tv/' in url_lower)
+    media_files, error, error_type = download_media(url, download_path, cookies_path, ytdlp_bin=ytdlp_bin, want_thumbnails=want_thumbnails)
     
     if error:
         log_error(error, error_type)
@@ -351,7 +358,10 @@ def main():
             "quality": get_quality_label(info_dict) if is_video else "Original",
             "path": str(file_path),
             "filename": file_path.name,
-            "thumbnail": thumb_path or thumbnail
+            # 'thumbnail' is a REMOTE URL (safe to show in browser)
+            "thumbnail": thumbnail,
+            # 'thumbnail_file' is a LOCAL path (Laravel will convert it to thumbnail_url)
+            "thumbnail_file": thumb_path or ""
         }
         items.append(item)
     

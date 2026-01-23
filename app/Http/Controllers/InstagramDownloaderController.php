@@ -20,14 +20,6 @@ class InstagramDownloaderController extends Controller
     }
 
     /**
-     * yt-dlp executable path from .env
-     */
-    private function getYtdlpPath(): string
-    {
-        return config('services.ytdlp.path', 'yt-dlp');
-    }
-
-    /**
      * Display the Instagram Downloader page
      */
     public function index()
@@ -65,6 +57,21 @@ class InstagramDownloaderController extends Controller
             $pythonScript = base_path('python_worker/instagram_fetch.py');
             $cookiesPath = base_path('python_worker/cookies/instagram.txt');
 
+            // yt-dlp binary path (optional). If not set, Python will try to use PATH.
+            // IMPORTANT (Windows/Laragon): PHP-FPM/Apache may not inherit your terminal PATH, so set YTDLP_PATH in .env.
+            // NOTE: In some setups config('services.ytdlp.path') can be null if config cache is stale or .env isn't loaded.
+            // We therefore also fall back to env('YTDLP_PATH') to avoid silently passing "yt-dlp".
+            $ytDlpPath = config('services.ytdlp.path');
+            $ytDlpEnv = env('YTDLP_PATH');
+            $ytDlpResolved = (string) ($ytDlpPath ?: ($ytDlpEnv ?: 'yt-dlp'));
+
+            Log::info('Resolved binary paths', [
+                'python' => $this->getPythonPath(),
+                'ytdlp_config' => $ytDlpPath,
+                'ytdlp_env' => $ytDlpEnv,
+                'yt_dlp_resolved' => $ytDlpResolved,
+            ]);
+
             // Check if cookies file exists
             if (!file_exists($cookiesPath)) {
                 return response()->json([
@@ -76,58 +83,71 @@ class InstagramDownloaderController extends Controller
 
             // Build the command
             $python = $this->getPythonPath();
-            $ytdlp = $this->getYtdlpPath();
-            
-            // Debug: Log the paths being used
-            Log::info('Executing Instagram fetch', [
+
+            // Args: <url> <download_path> <cookies_path> <yt_dlp_path>
+            // IMPORTANT (Windows): do not rely on PHP/Apache cmd.exe parsing with nested quotes.
+            // Use proc_open with an argument array to avoid issues like:
+            // "'C:\Users\Ashikur' is not recognized..."
+            $args = [
+                $python,
+                $pythonScript,
+                $url,
+                $downloadPath,
+                $cookiesPath,
+                $ytDlpResolved,
+            ];
+
+            Log::info('Executing Instagram fetch (proc_open)', [
+                'args' => $args,
                 'python' => $python,
-                'ytdlp' => $ytdlp,
-                'url' => $url,
+                'yt_dlp_resolved' => $ytDlpResolved,
             ]);
-            
-            // Handle Windows vs Linux command building
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                // Windows: Use double quotes for paths with spaces
-                // Don't use escapeshellarg on Windows for paths - it uses ^ which breaks paths
-                $command = sprintf(
-                    '"%s" "%s" "%s" "%s" "%s" "%s" 2>&1',
-                    str_replace('/', '\\', $python),
-                    str_replace('/', '\\', $pythonScript),
-                    $url,
-                    str_replace('/', '\\', $downloadPath),
-                    str_replace('/', '\\', $cookiesPath),
-                    str_replace('/', '\\', $ytdlp)
-                );
-            } else {
-                // Linux: Use escapeshellarg for proper escaping
-                $command = sprintf(
-                    '%s %s %s %s %s %s 2>&1',
-                    escapeshellcmd($python),
-                    escapeshellarg($pythonScript),
-                    escapeshellarg($url),
-                    escapeshellarg($downloadPath),
-                    escapeshellarg($cookiesPath),
-                    escapeshellarg($ytdlp)
-                );
+
+            $descriptorSpec = [
+                0 => ['pipe', 'r'],
+                1 => ['pipe', 'w'],
+                2 => ['pipe', 'w'],
+            ];
+
+            // Set a sane HOME on Linux so yt-dlp can write cache/config safely
+            $env = null;
+            if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
+                $env = array_merge($_ENV, [
+                    'HOME' => '/tmp',
+                ]);
             }
 
-            Log::info('Executing Instagram fetch command', ['command' => $command]);
+            $process = proc_open($args, $descriptorSpec, $pipes, null, $env);
 
-            // Execute Python script
-            $output = [];
-            $returnCode = 0;
-            exec($command, $output, $returnCode);
+            if (!is_resource($process)) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to start Python worker process.',
+                    'error_type' => 'proc_open_failed'
+                ], 500);
+            }
 
-            $outputString = implode("\n", $output);
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+
+            $returnCode = proc_close($process);
+
+            $outputString = trim($stdout . "\n" . $stderr);
             Log::info('Python script output', ['output' => $outputString, 'return_code' => $returnCode]);
 
-            // Parse JSON output from Python
-            $jsonOutput = null;
-            foreach ($output as $line) {
-                $decoded = json_decode($line, true);
-                if ($decoded !== null) {
-                    $jsonOutput = $decoded;
-                    break;
+            // Parse JSON output from Python (it prints one JSON object)
+            $jsonOutput = json_decode($stdout, true);
+            if ($jsonOutput === null) {
+                // If stdout isn't JSON, attempt to find JSON line in combined output
+                foreach (preg_split("/\r\n|\r|\n/", $outputString) as $line) {
+                    $decoded = json_decode(trim($line), true);
+                    if ($decoded !== null) {
+                        $jsonOutput = $decoded;
+                        break;
+                    }
                 }
             }
 
@@ -150,40 +170,46 @@ class InstagramDownloaderController extends Controller
                 ], 400);
             }
 
-            // Transform file paths to download/preview URLs
+            // Transform file paths to download URLs
             if (isset($jsonOutput['items']) && is_array($jsonOutput['items'])) {
                 foreach ($jsonOutput['items'] as &$item) {
+                    // Main media file
                     if (isset($item['path'])) {
                         $filename = basename($item['path']);
-                        
-                        // Download URL
                         $item['download_url'] = route('instagram.download', [
                             'folder' => $sessionId,
                             'filename' => $filename
                         ]);
-                        
-                        // Preview URL (for video player / image display)
-                        $item['preview_url'] = route('instagram.preview', [
-                            'folder' => $sessionId,
-                            'filename' => $filename
-                        ]);
-                        
-                        // Thumbnail URL (use local thumbnail if available)
-                        if (!empty($item['thumbnail']) && file_exists($item['thumbnail'])) {
-                            $thumbFilename = basename($item['thumbnail']);
-                            $item['thumbnail_url'] = route('instagram.thumbnail', [
+                        unset($item['path']);
+                    }
+
+                    // Thumbnail URL
+                    // Priority:
+                    // 1) item['thumbnail_file'] (local file path created by yt-dlp --write-thumbnail)
+                    // 2) item['thumbnail'] (remote URL from metadata)
+                    $thumbSource = null;
+                    if (isset($item['thumbnail_file']) && is_string($item['thumbnail_file']) && $item['thumbnail_file'] !== '') {
+                        $thumbSource = $item['thumbnail_file'];
+                    } elseif (isset($item['thumbnail']) && is_string($item['thumbnail']) && $item['thumbnail'] !== '') {
+                        $thumbSource = $item['thumbnail'];
+                    }
+
+                    if ($thumbSource) {
+                        $isLocalPath = str_contains($thumbSource, ':\\') || str_starts_with($thumbSource, '/') || str_contains($thumbSource, DIRECTORY_SEPARATOR);
+
+                        if ($isLocalPath) {
+                            $thumbFilename = basename($thumbSource);
+                            $item['thumbnail_url'] = route('instagram.download', [
                                 'folder' => $sessionId,
                                 'filename' => $thumbFilename
                             ]);
                         } else {
-                            // Use preview URL as thumbnail for images
-                            $item['thumbnail_url'] = $item['preview_url'];
+                            $item['thumbnail_url'] = $thumbSource;
                         }
-                        
-                        // Clean up internal paths
-                        unset($item['path']);
-                        unset($item['thumbnail']);
                     }
+
+                    // Never expose local filesystem paths to the browser
+                    unset($item['thumbnail_file']);
                 }
             }
 
@@ -239,87 +265,6 @@ class InstagramDownloaderController extends Controller
         return response()->download($filePath, $filename, [
             'Content-Type' => $mimeType,
         ]);
-    }
-
-    /**
-     * Preview/stream a media file (for video player and image preview)
-     */
-    public function preview(string $folder, string $filename)
-    {
-        // Sanitize inputs
-        $folder = basename($folder);
-        $filename = basename($filename);
-        
-        $filePath = storage_path('app/downloads/' . $folder . '/' . $filename);
-
-        if (!file_exists($filePath)) {
-            abort(404, 'File not found');
-        }
-
-        // Determine MIME type
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $mimeTypes = [
-            'mp4' => 'video/mp4',
-            'webm' => 'video/webm',
-            'jpg' => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-        ];
-        $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
-        $fileSize = filesize($filePath);
-
-        // Handle range requests for video streaming
-        $headers = [
-            'Content-Type' => $mimeType,
-            'Content-Length' => $fileSize,
-            'Accept-Ranges' => 'bytes',
-            'Cache-Control' => 'public, max-age=3600',
-        ];
-
-        // Check for range request (for video seeking)
-        if (isset($_SERVER['HTTP_RANGE'])) {
-            $range = $_SERVER['HTTP_RANGE'];
-            if (preg_match('/bytes=(\d+)-(\d*)/', $range, $matches)) {
-                $start = intval($matches[1]);
-                $end = $matches[2] !== '' ? intval($matches[2]) : $fileSize - 1;
-                
-                if ($start > $end || $start >= $fileSize) {
-                    abort(416, 'Range Not Satisfiable');
-                }
-                
-                $length = $end - $start + 1;
-                
-                return response()->stream(function() use ($filePath, $start, $length) {
-                    $handle = fopen($filePath, 'rb');
-                    fseek($handle, $start);
-                    $remaining = $length;
-                    while ($remaining > 0 && !feof($handle)) {
-                        $chunk = min(8192, $remaining);
-                        echo fread($handle, $chunk);
-                        $remaining -= $chunk;
-                        flush();
-                    }
-                    fclose($handle);
-                }, 206, [
-                    'Content-Type' => $mimeType,
-                    'Content-Length' => $length,
-                    'Content-Range' => "bytes $start-$end/$fileSize",
-                    'Accept-Ranges' => 'bytes',
-                ]);
-            }
-        }
-
-        // Return full file
-        return response()->file($filePath, $headers);
-    }
-
-    /**
-     * Serve thumbnail image
-     */
-    public function thumbnail(string $folder, string $filename)
-    {
-        return $this->preview($folder, $filename);
     }
 
     /**

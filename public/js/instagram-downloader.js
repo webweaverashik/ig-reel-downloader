@@ -2,6 +2,9 @@
  * Instagram Downloader - Pure JavaScript
  * Phase 1: Core Downloader Functionality
  * 
+ * This file should be placed in public/js/ for Laravel to serve it.
+ * Copy from resources/js/instagram-downloader.js
+ * 
  * Features:
  * - Instagram URL validation
  * - Async fetch with progress handling
@@ -134,7 +137,13 @@
         elements.caption.textContent = data.caption || '';
 
         // Render media grid
-        renderMediaGrid(data.items || []);
+        // For reels/videos: show only video items (no thumbnail-only image cards)
+        let items = Array.isArray(data.items) ? data.items : [];
+        const pageType = (data.type || '').toLowerCase();
+        if (pageType === 'reel' || pageType === 'video' || pageType === 'tv') {
+            items = items.filter(it => (it.type === 'video') || ((it.format || '').toLowerCase() === 'mp4') || ((it.format || '').toLowerCase() === 'webm'));
+        }
+        renderMediaGrid(items);
 
         // Update download all button
         if (data.download_all_url) {
@@ -169,13 +178,20 @@
         card.className = 'relative group rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 fade-in';
         
         const isVideo = item.format === 'mp4' || item.format === 'webm' || item.type === 'video';
-        // Prefer Laravel-served thumbnail_url. If we only have a local filesystem path, ignore it.
+        const isImage = !isVideo;
+
+        // Prefer Laravel-served thumbnail_url.
         const safeThumb = (item.thumbnail_url && /^https?:\/\//i.test(item.thumbnail_url))
             ? item.thumbnail_url
             : (item.thumbnail && /^https?:\/\//i.test(item.thumbnail) ? item.thumbnail : '');
-        const thumbnailUrl = safeThumb || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"%3E%3Crect fill="%23374151" width="400" height="500"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EMedia ' + (index + 1) + '%3C/text%3E%3C/svg%3E';
+
+        // For image media, the media itself should be displayed (download_url is an image).
+        const displayImageUrl = (isImage && item.download_url) ? item.download_url : safeThumb;
+
+        const fallbackSvg = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"%3E%3Crect fill="%23374151" width="400" height="500"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EMedia ' + (index + 1) + '%3C/text%3E%3C/svg%3E';
+        const thumbnailUrl = safeThumb || fallbackSvg;
         const mediaUrl = item.download_url || '#';
-        
+
         card.innerHTML = `
             <div class="aspect-[4/5] relative">
                 ${isVideo && mediaUrl !== '#' ? `
@@ -188,18 +204,12 @@
                     ></video>
                 ` : `
                     <img 
-                        src="${escapeHtml(thumbnailUrl)}" 
+                        src="${escapeHtml(displayImageUrl || fallbackSvg)}" 
                         alt="Media ${index + 1}" 
                         class="w-full h-full object-cover"
-                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 500%22%3E%3Crect fill=%22%23374151%22 width=%22400%22 height=%22500%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%239CA3AF%22 text-anchor=%22middle%22 dy=%22.3em%22 font-family=%22system-ui%22 font-size=%2214%22%3EMedia ${index + 1}%3C/text%3E%3C/svg%3E'"
+                        onerror="this.src='${fallbackSvg}'"
                     >
                 `}
-
-                ${isVideo ? `
-                    <div class="absolute bottom-3 left-3 pointer-events-none">
-                        <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">🎬 Video</span>
-                    </div>
-                ` : ''}
 
                 <div class="absolute top-3 left-3">
                     <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">
@@ -208,7 +218,7 @@
                 </div>
                 <div class="absolute top-3 right-3">
                     <span class="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-medium">
-                        ${escapeHtml(item.quality || 'HD')}
+                        ${escapeHtml(item.quality || (isVideo ? 'HD' : 'Original'))}
                     </span>
                 </div>
             </div>
@@ -216,7 +226,8 @@
                 <a 
                     href="${escapeHtml(item.download_url || '#')}" 
                     class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors flex items-center justify-center space-x-2 block text-center"
-                    download
+                    target="_blank"
+                    rel="noopener"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -308,14 +319,17 @@
             console.error('Fetch error:', error);
             
             // Handle specific error types
-            if (error.message.includes('cookies')) {
+            const msg = (error.message || '').toLowerCase();
+            if (msg.includes('cookies_missing') || msg.includes('cookies file') || msg.includes('cookies not configured')) {
                 showError('Instagram cookies not configured. Please contact administrator.');
-            } else if (error.message.includes('private')) {
+            } else if (msg.includes('login_required') || msg.includes('login required')) {
+                showError('Login required. Cookies may be expired. Please refresh cookies.');
+            } else if (msg.includes('private_content') || msg.includes('private')) {
                 showError('This content is from a private account and cannot be downloaded.');
-            } else if (error.message.includes('login')) {
-                showError('Login required. Please ensure cookies are properly configured.');
-            } else if (error.message.includes('rate')) {
+            } else if (msg.includes('rate_limited') || msg.includes('rate')) {
                 showError('Rate limited by Instagram. Please try again in a few minutes.');
+            } else if (msg.includes('no_formats') || msg.includes('no video formats')) {
+                showError('No downloadable formats found for this URL. Try updating yt-dlp on the server.');
             } else {
                 showError(error.message || 'An unexpected error occurred. Please try again.');
             }
