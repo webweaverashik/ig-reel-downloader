@@ -9,16 +9,11 @@ use ZipArchive;
 class InstagramDownloaderController extends Controller
 {
     /**
-     * Python executable path - adjust based on environment
+     * Python executable path from .env
      */
     private function getPythonPath(): string
     {
-        // Windows (Laragon) typically uses 'python'
-        // Ubuntu VPS might use 'python3'
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            return 'python';
-        }
-        return 'python3';
+        return config('services.python.path', 'python3');
     }
 
     /**
@@ -69,15 +64,28 @@ class InstagramDownloaderController extends Controller
             }
 
             // Build the command
-            $python  = $this->getPythonPath();
-            $command = sprintf(
-                '%s %s %s %s %s 2>&1',
-                escapeshellcmd($python),
-                escapeshellarg($pythonScript),
-                escapeshellarg($url),
-                escapeshellarg($downloadPath),
-                escapeshellarg($cookiesPath)
-            );
+            $python = $this->getPythonPath();
+
+            // Handle Windows paths with spaces
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $command = sprintf(
+                    '"%s" %s %s %s %s 2>&1',
+                    $python,
+                    escapeshellarg($pythonScript),
+                    escapeshellarg($url),
+                    escapeshellarg($downloadPath),
+                    escapeshellarg($cookiesPath)
+                );
+            } else {
+                $command = sprintf(
+                    '%s %s %s %s %s 2>&1',
+                    escapeshellcmd($python),
+                    escapeshellarg($pythonScript),
+                    escapeshellarg($url),
+                    escapeshellarg($downloadPath),
+                    escapeshellarg($cookiesPath)
+                );
+            }
 
             Log::info('Executing Instagram fetch command', ['command' => $command]);
 
