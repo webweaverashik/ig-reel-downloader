@@ -35,20 +35,12 @@ return [
         ],
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Python Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Path to Python executable. Different for Windows and Linux.
-    |
-    | Windows (Laragon): 'C:\Users\YOUR_USER\AppData\Local\Microsoft\WindowsApps\python.exe'
-    | Ubuntu VPS: '/usr/bin/python3'
-    |
-    */
-
     'python'   => [
         'path' => env('PYTHON_PATH', 'python3'),
+    ],
+
+    'ytdlp'    => [
+        'path' => env('YTDLP_PATH', 'yt-dlp'),
     ],
 
 ];
