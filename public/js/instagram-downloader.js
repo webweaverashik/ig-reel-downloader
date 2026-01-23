@@ -171,59 +171,113 @@
         card.className = 'relative group rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 fade-in';
         
         const isVideo = item.format === 'mp4' || item.format === 'webm' || item.type === 'video';
-        const thumbnailUrl = item.thumbnail_url || item.thumbnail || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"%3E%3Crect fill="%23374151" width="400" height="500"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EMedia ' + (index + 1) + '%3C/text%3E%3C/svg%3E';
-        const mediaUrl = item.download_url || '#';
-
-        card.innerHTML = `
-            <div class="aspect-[4/5] relative">
-                ${isVideo && mediaUrl !== '#' ? `
+        const thumbnailUrl = item.thumbnail_url || item.preview_url || '';
+        const previewUrl = item.preview_url || '';
+        const placeholderSvg = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"%3E%3Crect fill="%23374151" width="400" height="500"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EMedia ' + (index + 1) + '%3C/text%3E%3C/svg%3E';
+        
+        if (isVideo) {
+            // Video card with video player
+            card.innerHTML = `
+                <div class="aspect-[4/5] relative bg-black">
                     <video 
-                        class="w-full h-full object-cover"
-                        src="${escapeHtml(mediaUrl)}"
-                        poster="${escapeHtml(thumbnailUrl)}"
+                        class="w-full h-full object-contain video-player"
+                        poster="${escapeHtml(thumbnailUrl || placeholderSvg)}"
+                        preload="metadata"
                         playsinline
                         controls
-                        preload="metadata"
-                    ></video>
-                ` : `
-                    <img 
-                        src="${escapeHtml(thumbnailUrl)}" 
-                        alt="Media ${index + 1}" 
-                        class="w-full h-full object-cover"
-                        onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 400 500%22%3E%3Crect fill=%22%23374151%22 width=%22400%22 height=%22500%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%239CA3AF%22 text-anchor=%22middle%22 dy=%22.3em%22 font-family=%22system-ui%22 font-size=%2214%22%3EMedia ${index + 1}%3C/text%3E%3C/svg%3E'"
                     >
-                `}
-
-                ${isVideo ? `
-                    <div class="absolute bottom-3 left-3 pointer-events-none">
-                        <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">🎬 Video</span>
+                        <source src="${escapeHtml(previewUrl)}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-play-overlay absolute inset-0 flex items-center justify-center cursor-pointer bg-black/30 transition-opacity hover:bg-black/20">
+                        <div class="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                            <svg class="w-8 h-8 text-gray-900 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
                     </div>
-                ` : ''}
-
-                <div class="absolute top-3 left-3">
-                    <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">
-                        ${isVideo ? '🎬 Video' : '📷 Photo'}
-                    </span>
+                    <div class="absolute top-3 left-3 pointer-events-none">
+                        <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">
+                            🎬 Video
+                        </span>
+                    </div>
+                    <div class="absolute top-3 right-3 pointer-events-none">
+                        <span class="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-medium">
+                            ${escapeHtml(item.quality || 'HD')}
+                        </span>
+                    </div>
                 </div>
-                <div class="absolute top-3 right-3">
-                    <span class="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-medium">
-                        ${escapeHtml(item.quality || 'HD')}
-                    </span>
+                <div class="p-4">
+                    <a 
+                        href="${escapeHtml(item.download_url || '#')}" 
+                        class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors flex items-center justify-center space-x-2 block text-center"
+                        download
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span>Download MP4</span>
+                    </a>
                 </div>
-            </div>
-            <div class="p-4">
-                <a 
-                    href="${escapeHtml(item.download_url || '#')}" 
-                    class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors flex items-center justify-center space-x-2 block text-center"
-                    download
-                >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                    <span>Download ${escapeHtml((item.format || 'file').toUpperCase())}</span>
-                </a>
-            </div>
-        `;
+            `;
+            
+            // Add click handler for play overlay
+            setTimeout(() => {
+                const overlay = card.querySelector('.video-play-overlay');
+                const video = card.querySelector('video');
+                
+                if (overlay && video) {
+                    overlay.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        overlay.style.display = 'none';
+                        video.play();
+                    });
+                    
+                    video.addEventListener('pause', () => {
+                        overlay.style.display = 'flex';
+                    });
+                    
+                    video.addEventListener('play', () => {
+                        overlay.style.display = 'none';
+                    });
+                }
+            }, 0);
+        } else {
+            // Image card
+            card.innerHTML = `
+                <div class="aspect-[4/5] relative">
+                    <img 
+                        src="${escapeHtml(previewUrl || thumbnailUrl || placeholderSvg)}" 
+                        alt="Media ${index + 1}" 
+                        class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                        onerror="this.src='${placeholderSvg}'"
+                        onclick="window.open('${escapeHtml(previewUrl)}', '_blank')"
+                    >
+                    <div class="absolute top-3 left-3 pointer-events-none">
+                        <span class="px-2 py-1 rounded-lg bg-black/60 text-white text-xs font-medium">
+                            📷 Photo
+                        </span>
+                    </div>
+                    <div class="absolute top-3 right-3 pointer-events-none">
+                        <span class="px-2 py-1 rounded-lg bg-violet-600 text-white text-xs font-medium">
+                            ${escapeHtml(item.quality || 'Original')}
+                        </span>
+                    </div>
+                </div>
+                <div class="p-4">
+                    <a 
+                        href="${escapeHtml(item.download_url || '#')}" 
+                        class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors flex items-center justify-center space-x-2 block text-center"
+                        download
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span>Download ${escapeHtml((item.format || 'JPG').toUpperCase())}</span>
+                    </a>
+                </div>
+            `;
+        }
         
         return card;
     }
