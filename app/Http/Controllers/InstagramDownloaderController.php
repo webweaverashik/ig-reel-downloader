@@ -150,14 +150,33 @@ class InstagramDownloaderController extends Controller
             // Transform file paths to download URLs
             if (isset($jsonOutput['items']) && is_array($jsonOutput['items'])) {
                 foreach ($jsonOutput['items'] as &$item) {
+                    // Main media file
                     if (isset($item['path'])) {
                         $filename = basename($item['path']);
                         $item['download_url'] = route('instagram.download', [
                             'folder' => $sessionId,
                             'filename' => $filename
                         ]);
-                        // Keep original path for reference but don't expose it
                         unset($item['path']);
+                    }
+
+                    // Thumbnail file (if Python returned a local thumbnail path)
+                    if (isset($item['thumbnail']) && is_string($item['thumbnail']) && $item['thumbnail'] !== '') {
+                        // If it's a local path, convert to a Laravel download URL
+                        // (Windows paths contain \\ or drive letter; Linux paths start with /)
+                        $thumb = $item['thumbnail'];
+                        $isLocalPath = str_contains($thumb, ':\\\') || str_starts_with($thumb, '/') || str_contains($thumb, DIRECTORY_SEPARATOR);
+
+                        if ($isLocalPath) {
+                            $thumbFilename = basename($thumb);
+                            $item['thumbnail_url'] = route('instagram.download', [
+                                'folder' => $sessionId,
+                                'filename' => $thumbFilename
+                            ]);
+                        } else {
+                            // Remote URL from yt-dlp metadata
+                            $item['thumbnail_url'] = $thumb;
+                        }
                     }
                 }
             }
