@@ -128,33 +128,49 @@ class InstagramDownloaderController extends Controller
     }
 
     /**
-     * Python executable path from config
+     * Python executable path from config - always get fresh value
      */
     private function getPythonPath(): string
     {
-        return config('services.python.path', '/usr/bin/python3');
+        // Force re-read from env to avoid caching issues
+        $path = env('PYTHON_PATH', null);
+        if ($path === null) {
+            $path = config('services.python.path', '/usr/bin/python3');
+        }
+        return $path;
     }
 
     /**
-     * Get yt-dlp path from config
+     * Get yt-dlp path from config - always get fresh value
      */
     private function getYtDlpPath(): string
     {
-        return config('services.ytdlp.path', '/usr/local/bin/yt-dlp');
+        // Force re-read from env to avoid caching issues
+        $path = env('YTDLP_PATH', null);
+        if ($path === null) {
+            $path = config('services.ytdlp.path', '/usr/local/bin/yt-dlp');
+        }
+        return $path;
     }
 
     /**
-     * Get all available cookie files with absolute paths
+     * Get all available cookie files with absolute paths - FRESH each time
      */
     private function getCookieFiles(): array
     {
-        $cookiesDir = base_path('python_worker/cookies');
+        // Always use realpath to get absolute path
+        $cookiesDir = realpath(base_path('python_worker/cookies'));
 
-        if (! is_dir($cookiesDir)) {
-            Log::warning('Cookies directory not found', ['path' => $cookiesDir]);
+        if (! $cookiesDir || ! is_dir($cookiesDir)) {
+            Log::warning('Cookies directory not found', [
+                'expected' => base_path('python_worker/cookies'),
+                'realpath' => $cookiesDir,
+            ]);
             return [];
         }
 
+        // Get fresh file list each time (no caching)
+        clearstatcache();
         $files = glob($cookiesDir . '/*.txt');
 
         if (empty($files)) {
@@ -165,15 +181,30 @@ class InstagramDownloaderController extends Controller
         // Convert to absolute paths and verify readability
         $validFiles = [];
         foreach ($files as $file) {
+            clearstatcache(true, $file);
             $absolutePath = realpath($file);
-            if ($absolutePath && is_readable($absolutePath) && filesize($absolutePath) > 50) {
-                $validFiles[] = $absolutePath;
+
+            if ($absolutePath && is_readable($absolutePath)) {
+                $size = filesize($absolutePath);
+                if ($size > 50) {
+                    $validFiles[] = $absolutePath;
+                    Log::debug('Valid cookie file found', [
+                        'file' => basename($absolutePath),
+                        'size' => $size,
+                        'path' => $absolutePath,
+                    ]);
+                } else {
+                    Log::warning('Cookie file too small', [
+                        'file' => $file,
+                        'size' => $size,
+                    ]);
+                }
             } else {
                 Log::warning('Cookie file invalid or unreadable', [
-                    'file'     => $file,
-                    'exists'   => file_exists($file),
-                    'readable' => is_readable($file),
-                    'size'     => file_exists($file) ? filesize($file) : 0,
+                    'file'         => $file,
+                    'exists'       => file_exists($file),
+                    'readable'     => is_readable($file),
+                    'absolutePath' => $absolutePath,
                 ]);
             }
         }
@@ -191,10 +222,12 @@ class InstagramDownloaderController extends Controller
                 return 1;
             }
 
+            clearstatcache(true, $a);
+            clearstatcache(true, $b);
             return filemtime($b) - filemtime($a);
         });
 
-        Log::info('Found cookie files', [
+        Log::info('Cookie files loaded', [
             'count' => count($validFiles),
             'files' => array_map('basename', $validFiles),
         ]);
@@ -279,10 +312,12 @@ class InstagramDownloaderController extends Controller
      */
     public function cookieStatus()
     {
+        clearstatcache();
         $cookies = $this->getCookieFiles();
         $status  = [];
 
         foreach ($cookies as $cookieFile) {
+            clearstatcache(true, $cookieFile);
             $name     = basename($cookieFile);
             $size     = filesize($cookieFile);
             $modified = date('Y-m-d H:i:s', filemtime($cookieFile));
@@ -329,16 +364,23 @@ class InstagramDownloaderController extends Controller
             $requestsVersion = 'Check failed';
         }
 
+        // Test a simple Python execution
+        $testCmd     = escapeshellarg($pythonPath) . ' -c "import sys, json; print(json.dumps({\'success\': True}))" 2>&1';
+        $testOutput  = shell_exec($testCmd);
+        $pythonWorks = strpos($testOutput, 'success') !== false;
+
         return response()->json([
             'success'          => true,
+            'timestamp'        => now()->toIso8601String(),
             'total_cookies'    => count($cookies),
             'python_path'      => $pythonPath,
             'python_version'   => $pythonVersion,
+            'python_works'     => $pythonWorks,
             'ytdlp_path'       => $ytdlpPath,
             'ytdlp_version'    => $ytdlpVersion,
             'requests_library' => $requestsVersion,
             'base_path'        => base_path(),
-            'cookies_dir'      => base_path('python_worker/cookies'),
+            'cookies_dir'      => realpath(base_path('python_worker/cookies')) ?: base_path('python_worker/cookies'),
             'web_user'         => get_current_user(),
             'process_user'     => function_exists('posix_geteuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'unknown') : php_uname('n'),
             'cookies'          => $status,
@@ -350,6 +392,9 @@ class InstagramDownloaderController extends Controller
      */
     public function fetch(Request $request)
     {
+        // Clear stat cache to ensure fresh file checks
+        clearstatcache();
+
         // Validate the URL
         $request->validate(
             [
@@ -374,7 +419,7 @@ class InstagramDownloaderController extends Controller
                 mkdir($downloadPath, 0755, true);
             }
 
-            // Get all available cookie files (absolute paths)
+            // Get all available cookie files (absolute paths) - fresh each time
             $cookieFiles = $this->getCookieFiles();
 
             if (empty($cookieFiles)) {
@@ -390,10 +435,10 @@ class InstagramDownloaderController extends Controller
             }
 
             // Path to Python script (absolute path)
-            $pythonScript = base_path('python_worker/instagram_fetch.py');
+            $pythonScript = realpath(base_path('python_worker/instagram_fetch.py'));
 
-            if (! file_exists($pythonScript)) {
-                Log::error('Python script not found', ['path' => $pythonScript]);
+            if (! $pythonScript || ! file_exists($pythonScript)) {
+                Log::error('Python script not found', ['path' => base_path('python_worker/instagram_fetch.py')]);
                 return response()->json(
                     [
                         'success'    => false,
@@ -414,13 +459,14 @@ class InstagramDownloaderController extends Controller
                 'url'           => $url,
                 'session_id'    => $sessionId,
                 'cookie_count'  => count($cookieFiles),
+                'cookies'       => array_map('basename', $cookieFiles),
                 'python'        => $python,
                 'yt_dlp'        => $ytDlpPath,
                 'script'        => $pythonScript,
                 'download_path' => $downloadPath,
             ]);
 
-            // Build command - use shell_exec with full command for better compatibility
+            // Build command with proper escaping
             $escapedPython       = escapeshellarg($python);
             $escapedScript       = escapeshellarg($pythonScript);
             $escapedUrl          = escapeshellarg($url);
@@ -430,23 +476,37 @@ class InstagramDownloaderController extends Controller
 
             $cmd = "{$escapedPython} {$escapedScript} {$escapedUrl} {$escapedDownloadPath} {$escapedCookiesJson} {$escapedYtDlpPath} 2>&1";
 
-            Log::debug('Executing command', ['cmd' => substr($cmd, 0, 300) . '...']);
+            Log::debug('Executing command', ['cmd' => substr($cmd, 0, 500) . '...']);
 
-            // Change to script directory and execute
-            $cwd = getcwd();
-            chdir(base_path('python_worker'));
+            // Store current directory
+            $originalCwd = getcwd();
+
+            // Change to script directory
+            $scriptDir = dirname($pythonScript);
+            chdir($scriptDir);
 
             // Set environment variables
+            $envBackup = [
+                'HOME' => getenv('HOME'),
+                'PATH' => getenv('PATH'),
+            ];
+
             putenv('HOME=/tmp');
             putenv('PATH=/usr/local/bin:/usr/bin:/bin:' . getenv('PATH'));
 
+            // Execute
             $output = shell_exec($cmd);
 
-            chdir($cwd);
+            // Restore environment
+            chdir($originalCwd);
+            putenv('HOME=' . ($envBackup['HOME'] ?: ''));
+            if ($envBackup['PATH']) {
+                putenv('PATH=' . $envBackup['PATH']);
+            }
 
             Log::info('Python script completed', [
                 'output_length'  => strlen($output ?? ''),
-                'output_preview' => substr($output ?? '', 0, 500),
+                'output_preview' => substr($output ?? '', 0, 1000),
             ]);
 
             $outputString = trim($output ?? '');
@@ -470,7 +530,7 @@ class InstagramDownloaderController extends Controller
 
             if ($jsonOutput === null) {
                 Log::error('Failed to parse Python output', [
-                    'output' => substr($outputString, 0, 1000),
+                    'output' => substr($outputString, 0, 2000),
                 ]);
 
                 // Try to extract meaningful error
@@ -495,7 +555,7 @@ class InstagramDownloaderController extends Controller
                         'success'    => false,
                         'error'      => 'Failed to process Instagram content. Please try again.',
                         'error_type' => 'parse_error',
-                        'debug'      => config('app.debug') ? substr($outputString, 0, 500) : null,
+                        'debug'      => config('app.debug') ? substr($outputString, 0, 1000) : null,
                     ],
                     500,
                 );
@@ -577,6 +637,7 @@ class InstagramDownloaderController extends Controller
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
             ]);
 
             return response()->json(
