@@ -125,18 +125,6 @@
                 <div id="mediaGrid" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Media items will be inserted here by JavaScript -->
                 </div>
-
-                <!-- Bulk Download -->
-                <div class="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                    <a id="downloadAllBtn" href="#"
-                        class="w-full instagram-gradient text-white font-semibold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center space-x-2 block text-center">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                        </svg>
-                        <span>Download All (ZIP)</span>
-                    </a>
-                </div>
             </div>
         </div>
     </section>
