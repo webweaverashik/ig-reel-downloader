@@ -30,7 +30,7 @@
                 {{ $config['hero_title'] }}
             </h1>
 
-            <!-- Subtitle with gradient -->
+            <!-- Subtitle with gradient (H2) -->
             <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6 slide-up" style="animation-delay: 0.2s">
                 <span class="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
                     {{ $config['hero_highlight'] }}
@@ -287,86 +287,8 @@
         </div>
     </section>
 
-    <!-- Features Section -->
-    <section class="py-16">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    Why Choose IG Reel Downloader?
-                </h2>
-                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-                    The most trusted Instagram downloader with premium features, completely free.
-                </p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Feature 1 -->
-                <div class="text-center p-6">
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white text-lg mb-2">Lightning Fast</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">Download content in seconds with our optimized
-                        servers.</p>
-                </div>
-
-                <!-- Feature 2 -->
-                <div class="text-center p-6">
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white text-lg mb-2">100% Secure</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">No data stored. Your privacy is our top priority.
-                    </p>
-                </div>
-
-                <!-- Feature 3 -->
-                <div class="text-center p-6">
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white text-lg mb-2">HD Quality</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">Always get the highest quality available for
-                        downloads.</p>
-                </div>
-
-                <!-- Feature 4 -->
-                <div class="text-center p-6">
-                    <div
-                        class="w-16 h-16 rounded-2xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white text-lg mb-2">100% Free</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">No hidden fees, no subscriptions. Free forever.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- How It Works -->
-    <section class="py-16 bg-white dark:bg-gray-900">
+    <section class="py-16">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -414,32 +336,8 @@
         </div>
     </section>
 
-    <!-- Stats Section -->
-    <section class="py-16 instagram-gradient">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white">
-                <div>
-                    <div class="text-4xl sm:text-5xl font-bold mb-2">1M+</div>
-                    <div class="text-white/80">Downloads</div>
-                </div>
-                <div>
-                    <div class="text-4xl sm:text-5xl font-bold mb-2">500K+</div>
-                    <div class="text-white/80">Happy Users</div>
-                </div>
-                <div>
-                    <div class="text-4xl sm:text-5xl font-bold mb-2">99.9%</div>
-                    <div class="text-white/80">Uptime</div>
-                </div>
-                <div>
-                    <div class="text-4xl sm:text-5xl font-bold mb-2">5★</div>
-                    <div class="text-white/80">User Rating</div>
-                </div>
-            </div>
-        </div>
-    </section>
-
     <!-- FAQ Section -->
-    <section class="py-16">
+    <section class="py-16 bg-white dark:bg-gray-900">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
                 <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -468,26 +366,6 @@
                     </div>
                 @endforeach
             </div>
-        </div>
-    </section>
-
-    <!-- CTA Section -->
-    <section class="py-16 bg-white dark:bg-gray-900">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                Ready to Download?
-            </h2>
-            <p class="text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
-                Start downloading Instagram Reels, Videos, Photos, and Stories for free. No signup required!
-            </p>
-            <a href="#downloadForm"
-                class="inline-flex items-center space-x-2 instagram-gradient text-white font-semibold px-8 py-4 rounded-2xl hover:opacity-90 transition-all transform hover:scale-[1.02] shadow-lg shadow-pink-500/25">
-                <span>Start Downloading Now</span>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3">
-                    </path>
-                </svg>
-            </a>
         </div>
     </section>
 @endsection

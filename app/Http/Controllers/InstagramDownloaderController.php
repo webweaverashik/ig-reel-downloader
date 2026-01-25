@@ -43,7 +43,14 @@ class InstagramDownloaderController extends Controller
                 'badge'            => 'Free & Unlimited Reels Downloads',
                 'placeholder'      => 'Paste Instagram Reel URL here...',
                 'formats'          => ['Reels', 'HD Quality', 'MP4 Format', 'No Watermark', 'Fast Download'],
-                'faqs'             => [['q' => 'How do I download Instagram Reels?', 'a' => 'Simply copy the Reel URL from Instagram, paste it in the input field above, and click Download. Your Reel will be ready in seconds.'], ['q' => 'Is downloading Reels free?', 'a' => 'Yes, our Instagram Reels downloader is completely free with no hidden charges or subscription fees.'], ['q' => 'What quality can I download Reels in?', 'a' => 'We always provide the highest quality available, typically 1080p HD or the original upload quality.'], ['q' => 'Do I need to login to download Reels?', 'a' => 'No, you don\'t need to login or create an account. Just paste the URL and download instantly.'], ['q' => 'Can I download Reels on mobile?', 'a' => 'Yes! Our downloader works perfectly on all devices including smartphones and tablets.'], ['q' => 'Are Reels downloaded without watermark?', 'a' => 'Yes, we download Reels in their original quality without any added watermarks.']],
+                'faqs'             => [
+                    ['q' => 'How do I download Instagram Reels?', 'a' => 'Simply copy the Reel URL from Instagram, paste it in the input field above, and click Download. Your Reel will be ready in seconds.'],
+                    ['q' => 'Is downloading Reels free?', 'a' => 'Yes, our Instagram Reels downloader is completely free with no hidden charges or subscription fees.'],
+                    ['q' => 'What quality can I download Reels in?', 'a' => 'We always provide the highest quality available, typically 1080p HD or the original upload quality.'],
+                    ['q' => 'Do I need to login to download Reels?', 'a' => 'No, you don\'t need to login or create an account. Just paste the URL and download instantly.'],
+                    ['q' => 'Can I download Reels on mobile?', 'a' => 'Yes! Our downloader works perfectly on all devices including smartphones and tablets.'],
+                    ['q' => 'Are Reels downloaded without watermark?', 'a' => 'Yes, we download Reels in their original quality without any added watermarks.'],
+                ],
             ],
             'video'    => [
                 'title'            => 'Instagram Video Downloader - Download IG Videos in HD | IGReelDownloader.net',
@@ -54,7 +61,14 @@ class InstagramDownloaderController extends Controller
                 'badge'            => 'Free HD Video Downloads',
                 'placeholder'      => 'Paste Instagram Video URL here...',
                 'formats'          => ['IGTV', 'Video Posts', 'HD 1080p', 'MP4 Format', 'Original Quality'],
-                'faqs'             => [['q' => 'How do I download Instagram videos?', 'a' => 'Copy the video URL from Instagram, paste it above, and click Download. We support all Instagram video formats including IGTV.'], ['q' => 'What video formats are supported?', 'a' => 'We support all Instagram video types: regular video posts, IGTV, and video content from carousel posts.'], ['q' => 'Is the video quality preserved?', 'a' => 'Yes, we always download videos in the highest available quality, up to 1080p HD.'], ['q' => 'Can I download private account videos?', 'a' => 'No, only public videos can be downloaded. Private account content requires the owner\'s permission.'], ['q' => 'Are there any download limits?', 'a' => 'No limits! Download as many videos as you want, completely free.'], ['q' => 'What is the video format?', 'a' => 'Videos are downloaded in MP4 format, which is compatible with all devices and media players.']],
+                'faqs'             => [
+                    ['q' => 'How do I download Instagram videos?', 'a' => 'Copy the video URL from Instagram, paste it above, and click Download. We support all Instagram video formats including IGTV.'],
+                    ['q' => 'What video formats are supported?', 'a' => 'We support all Instagram video types: regular video posts, IGTV, and video content from carousel posts.'],
+                    ['q' => 'Is the video quality preserved?', 'a' => 'Yes, we always download videos in the highest available quality, up to 1080p HD.'],
+                    ['q' => 'Can I download private account videos?', 'a' => 'No, only public videos can be downloaded. Private account content requires the owner\'s permission.'],
+                    ['q' => 'Are there any download limits?', 'a' => 'No limits! Download as many videos as you want, completely free.'],
+                    ['q' => 'What is the video format?', 'a' => 'Videos are downloaded in MP4 format, which is compatible with all devices and media players.'],
+                ],
             ],
             'photo'    => [
                 'title'            => 'Instagram Photo Downloader - Download IG Photos in HD | IGReelDownloader.net',
@@ -65,7 +79,14 @@ class InstagramDownloaderController extends Controller
                 'badge'            => 'Free HD Photo Downloads',
                 'placeholder'      => 'Paste Instagram Photo URL here...',
                 'formats'          => ['Photos', 'Profile Pictures', 'Full Resolution', 'JPG/PNG', 'Original Size'],
-                'faqs'             => [['q' => 'How do I download Instagram photos?', 'a' => 'Copy the photo post URL from Instagram, paste it in the field above, and click Download to save it in full resolution.'], ['q' => 'What image quality will I get?', 'a' => 'We download photos in their original full resolution, exactly as uploaded by the creator.'], ['q' => 'Can I download multiple photos from a post?', 'a' => 'Yes! For carousel posts with multiple photos, we provide a "Download All" option to save everything at once.'], ['q' => 'What format are photos saved in?', 'a' => 'Photos are saved in their original format, typically JPG or PNG, maintaining full quality.'], ['q' => 'Can I download profile pictures?', 'a' => 'Yes, you can download profile pictures in full resolution using our tool.'], ['q' => 'Is there a size limit for photos?', 'a' => 'No, we download photos in their original size without any compression.']],
+                'faqs'             => [
+                    ['q' => 'How do I download Instagram photos?', 'a' => 'Copy the photo post URL from Instagram, paste it in the field above, and click Download to save it in full resolution.'],
+                    ['q' => 'What image quality will I get?', 'a' => 'We download photos in their original full resolution, exactly as uploaded by the creator.'],
+                    ['q' => 'Can I download multiple photos from a post?', 'a' => 'Yes! For carousel posts with multiple photos, we provide a "Download All" option to save everything at once.'],
+                    ['q' => 'What format are photos saved in?', 'a' => 'Photos are saved in their original format, typically JPG or PNG, maintaining full quality.'],
+                    ['q' => 'Can I download profile pictures?', 'a' => 'Yes, you can download profile pictures in full resolution using our tool.'],
+                    ['q' => 'Is there a size limit for photos?', 'a' => 'No, we download photos in their original size without any compression.'],
+                ],
             ],
             'story'    => [
                 'title'            => 'Instagram Story Downloader - Download IG Stories | IGReelDownloader.net',
@@ -76,7 +97,14 @@ class InstagramDownloaderController extends Controller
                 'badge'            => 'Anonymous Story Downloads',
                 'placeholder'      => 'Paste Instagram Story URL here...',
                 'formats'          => ['Stories', 'Highlights', 'Photos', 'Videos', 'Anonymous'],
-                'faqs'             => [['q' => 'How do I download Instagram Stories?', 'a' => 'Copy the story URL from Instagram (or the story highlight URL), paste it above, and click Download.'], ['q' => 'Will the user know I downloaded their story?', 'a' => 'Our tool downloads stories anonymously. The user won\'t be notified that you saved their content.'], ['q' => 'Can I download story highlights?', 'a' => 'Yes! You can download both regular stories and story highlights using our tool.'], ['q' => 'What if the story has expired?', 'a' => 'Unfortunately, expired stories cannot be downloaded. You need to save them before they disappear after 24 hours.'], ['q' => 'Are story videos and photos supported?', 'a' => 'Yes, we support both photo and video stories in their original quality.'], ['q' => 'Can I download stories from private accounts?', 'a' => 'No, only stories from public accounts can be downloaded.']],
+                'faqs'             => [
+                    ['q' => 'How do I download Instagram Stories?', 'a' => 'Copy the story URL from Instagram (or the story highlight URL), paste it above, and click Download.'],
+                    ['q' => 'Will the user know I downloaded their story?', 'a' => 'Our tool downloads stories anonymously. The user won\'t be notified that you saved their content.'],
+                    ['q' => 'Can I download story highlights?', 'a' => 'Yes! You can download both regular stories and story highlights using our tool.'],
+                    ['q' => 'What if the story has expired?', 'a' => 'Unfortunately, expired stories cannot be downloaded. You need to save them before they disappear after 24 hours.'],
+                    ['q' => 'Are story videos and photos supported?', 'a' => 'Yes, we support both photo and video stories in their original quality.'],
+                    ['q' => 'Can I download stories from private accounts?', 'a' => 'No, only stories from public accounts can be downloaded.'],
+                ],
             ],
             'carousel' => [
                 'title'            => 'Instagram Carousel Downloader - Download Multiple Photos/Videos | IGReelDownloader.net',
@@ -116,7 +144,7 @@ class InstagramDownloaderController extends Controller
     }
 
     /**
-     * Get all available cookie files
+     * Get all available cookie files with absolute paths
      */
     private function getCookieFiles(): array
     {
@@ -130,28 +158,48 @@ class InstagramDownloaderController extends Controller
         $files = glob($cookiesDir . '/*.txt');
 
         if (empty($files)) {
-            Log::warning('No cookie files found in cookies directory');
+            Log::warning('No cookie files found in cookies directory', ['path' => $cookiesDir]);
             return [];
         }
 
-        // Sort by modification time (newest first) or by name
-        usort($files, function ($a, $b) {
+        // Convert to absolute paths and verify readability
+        $validFiles = [];
+        foreach ($files as $file) {
+            $absolutePath = realpath($file);
+            if ($absolutePath && is_readable($absolutePath) && filesize($absolutePath) > 50) {
+                $validFiles[] = $absolutePath;
+            } else {
+                Log::warning('Cookie file invalid or unreadable', [
+                    'file'     => $file,
+                    'exists'   => file_exists($file),
+                    'readable' => is_readable($file),
+                    'size'     => file_exists($file) ? filesize($file) : 0,
+                ]);
+            }
+        }
+
+        // Sort: instagram.txt first, then by modification time
+        usort($validFiles, function ($a, $b) {
             $aName = basename($a);
             $bName = basename($b);
 
-            // instagram.txt is the primary cookie
             if ($aName === 'instagram.txt') {
                 return -1;
             }
+
             if ($bName === 'instagram.txt') {
                 return 1;
             }
 
-            // Then sort by modification time (newest first)
             return filemtime($b) - filemtime($a);
         });
 
-        return $files;
+        Log::info('Found cookie files', [
+            'count' => count($validFiles),
+            'files' => array_map('basename', $validFiles),
+        ]);
+
+        return $validFiles;
     }
 
     /**
@@ -242,19 +290,45 @@ class InstagramDownloaderController extends Controller
 
             $status[] = [
                 'name'     => $name,
+                'path'     => $cookieFile,
                 'size'     => $size,
                 'modified' => $modified,
                 'readable' => $readable,
-                'valid'    => $size > 100 && $readable,
+                'valid'    => $size > 50 && $readable,
             ];
         }
 
+        // Test Python and yt-dlp
+        $pythonPath = $this->getPythonPath();
+        $ytdlpPath  = $this->getYtDlpPath();
+
+        $pythonVersion = null;
+        $ytdlpVersion  = null;
+
+        try {
+            exec($pythonPath . ' --version 2>&1', $pythonOutput, $pythonCode);
+            $pythonVersion = $pythonCode === 0 ? implode(' ', $pythonOutput) : 'Error: ' . implode(' ', $pythonOutput);
+        } catch (\Exception $e) {
+            $pythonVersion = 'Exception: ' . $e->getMessage();
+        }
+
+        try {
+            exec($ytdlpPath . ' --version 2>&1', $ytdlpOutput, $ytdlpCode);
+            $ytdlpVersion = $ytdlpCode === 0 ? implode(' ', $ytdlpOutput) : 'Error: ' . implode(' ', $ytdlpOutput);
+        } catch (\Exception $e) {
+            $ytdlpVersion = 'Exception: ' . $e->getMessage();
+        }
+
         return response()->json([
-            'success'       => true,
-            'total_cookies' => count($cookies),
-            'python_path'   => $this->getPythonPath(),
-            'ytdlp_path'    => $this->getYtDlpPath(),
-            'cookies'       => $status,
+            'success'        => true,
+            'total_cookies'  => count($cookies),
+            'python_path'    => $pythonPath,
+            'python_version' => $pythonVersion,
+            'ytdlp_path'     => $ytdlpPath,
+            'ytdlp_version'  => $ytdlpVersion,
+            'base_path'      => base_path(),
+            'cookies_dir'    => base_path('python_worker/cookies'),
+            'cookies'        => $status,
         ]);
     }
 
@@ -287,7 +361,7 @@ class InstagramDownloaderController extends Controller
                 mkdir($downloadPath, 0755, true);
             }
 
-            // Get all available cookie files
+            // Get all available cookie files (absolute paths)
             $cookieFiles = $this->getCookieFiles();
 
             if (empty($cookieFiles)) {
@@ -295,14 +369,14 @@ class InstagramDownloaderController extends Controller
                 return response()->json(
                     [
                         'success'    => false,
-                        'error'      => 'No Instagram cookies configured. Please contact administrator.',
+                        'error'      => 'No Instagram cookies configured. Please add valid cookie files.',
                         'error_type' => 'cookies_missing',
                     ],
                     400,
                 );
             }
 
-            // Path to Python script
+            // Path to Python script (absolute path)
             $pythonScript = base_path('python_worker/instagram_fetch.py');
 
             if (! file_exists($pythonScript)) {
@@ -320,25 +394,41 @@ class InstagramDownloaderController extends Controller
             $python    = $this->getPythonPath();
             $ytDlpPath = $this->getYtDlpPath();
 
-            // Prepare cookies list as JSON
+            // Prepare cookies list as JSON (already absolute paths)
             $cookiesJson = json_encode($cookieFiles);
 
             Log::info('Starting Instagram fetch', [
-                'url'          => $url,
-                'session_id'   => $sessionId,
-                'cookie_count' => count($cookieFiles),
-                'python'       => $python,
-                'yt_dlp'       => $ytDlpPath,
+                'url'           => $url,
+                'session_id'    => $sessionId,
+                'cookie_count'  => count($cookieFiles),
+                'python'        => $python,
+                'yt_dlp'        => $ytDlpPath,
+                'script'        => $pythonScript,
+                'download_path' => $downloadPath,
             ]);
 
-            // Build command - use escapeshellarg for safety
-            $cmd = sprintf('%s %s %s %s %s %s 2>&1', escapeshellarg($python), escapeshellarg($pythonScript), escapeshellarg($url), escapeshellarg($downloadPath), escapeshellarg($cookiesJson), escapeshellarg($ytDlpPath));
+            // Build command with proper escaping
+            $cmd = sprintf(
+                '%s %s %s %s %s %s 2>&1',
+                escapeshellarg($python),
+                escapeshellarg($pythonScript),
+                escapeshellarg($url),
+                escapeshellarg($downloadPath),
+                escapeshellarg($cookiesJson),
+                escapeshellarg($ytDlpPath)
+            );
+
+            Log::debug('Executing command', ['cmd' => substr($cmd, 0, 200) . '...']);
 
             // Set environment variables
-            $env = [];
-            if (strtoupper(substr(PHP_OS, 0, 3)) !== 'WIN') {
-                $env['HOME'] = '/tmp';
-                $env['PATH'] = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
+            $env         = [];
+            $env['HOME'] = sys_get_temp_dir();
+            $env['PATH'] = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
+            $env['LANG'] = 'en_US.UTF-8';
+
+            // On Windows, don't override PATH
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                $env = null; // Use default environment on Windows
             }
 
             // Execute command
@@ -348,7 +438,10 @@ class InstagramDownloaderController extends Controller
                 2 => ['pipe', 'w'],
             ];
 
-            $process = proc_open($cmd, $descriptorSpec, $pipes, null, $env ?: null);
+            // Change to script directory for execution
+            $cwd = base_path('python_worker');
+
+            $process = proc_open($cmd, $descriptorSpec, $pipes, $cwd, $env);
 
             if (! is_resource($process)) {
                 Log::error('Failed to start Python process');
@@ -365,8 +458,8 @@ class InstagramDownloaderController extends Controller
             fclose($pipes[0]);
 
             // Set timeout for reading
-            stream_set_timeout($pipes[1], 120);
-            stream_set_timeout($pipes[2], 120);
+            stream_set_timeout($pipes[1], 180);
+            stream_set_timeout($pipes[2], 180);
 
             $stdout = stream_get_contents($pipes[1]);
             $stderr = stream_get_contents($pipes[2]);
@@ -387,6 +480,10 @@ class InstagramDownloaderController extends Controller
 
             if (! empty($errorString)) {
                 Log::debug('Python stderr', ['stderr' => substr($errorString, 0, 1000)]);
+            }
+
+            if (! empty($outputString)) {
+                Log::debug('Python stdout', ['stdout' => substr($outputString, 0, 1000)]);
             }
 
             // Parse JSON output from Python
@@ -416,25 +513,19 @@ class InstagramDownloaderController extends Controller
                 $combinedOutput = $outputString . "\n" . $errorString;
 
                 if (stripos($combinedOutput, 'login') !== false || stripos($combinedOutput, 'cookie') !== false) {
-                    return response()->json(
-                        [
-                            'success'    => false,
-                            'error'      => 'Instagram session expired. Please try again later.',
-                            'error_type' => 'login_required',
-                        ],
-                        400,
-                    );
+                    return response()->json([
+                        'success'    => false,
+                        'error'      => 'Instagram session expired. Please try again later.',
+                        'error_type' => 'login_required',
+                    ], 400);
                 }
 
                 if (stripos($combinedOutput, 'private') !== false) {
-                    return response()->json(
-                        [
-                            'success'    => false,
-                            'error'      => 'This content is from a private account.',
-                            'error_type' => 'private_content',
-                        ],
-                        400,
-                    );
+                    return response()->json([
+                        'success'    => false,
+                        'error'      => 'This content is from a private account.',
+                        'error_type' => 'private_content',
+                    ], 400);
                 }
 
                 return response()->json(
@@ -442,7 +533,10 @@ class InstagramDownloaderController extends Controller
                         'success'    => false,
                         'error'      => 'Failed to process Instagram content. Please try again.',
                         'error_type' => 'parse_error',
-                        'debug'      => config('app.debug') ? substr($combinedOutput, 0, 500) : null,
+                        'debug'      => config('app.debug') ? [
+                            'stdout' => substr($outputString, 0, 500),
+                            'stderr' => substr($errorString, 0, 500),
+                        ] : null,
                     ],
                     500,
                 );
@@ -453,6 +547,7 @@ class InstagramDownloaderController extends Controller
                 Log::warning('Python script returned error', [
                     'error' => $jsonOutput['error'],
                     'type'  => $jsonOutput['error_type'] ?? 'unknown',
+                    'debug' => $jsonOutput['debug'] ?? null,
                 ]);
 
                 return response()->json(
@@ -461,6 +556,7 @@ class InstagramDownloaderController extends Controller
                         'error'         => $jsonOutput['error'],
                         'error_type'    => $jsonOutput['error_type'] ?? 'unknown',
                         'cookies_tried' => $jsonOutput['cookies_tried'] ?? 0,
+                        'debug'         => config('app.debug') ? ($jsonOutput['debug'] ?? null) : null,
                     ],
                     400,
                 );
@@ -483,7 +579,9 @@ class InstagramDownloaderController extends Controller
                     $thumbSource = $item['thumbnail_file'] ?? ($item['thumbnail'] ?? null);
 
                     if ($thumbSource) {
-                        $isLocalPath = str_contains($thumbSource, ':\\') || str_starts_with($thumbSource, '/') || str_contains($thumbSource, DIRECTORY_SEPARATOR);
+                        $isLocalPath = str_contains($thumbSource, ':\\') ||
+                        str_starts_with($thumbSource, '/') ||
+                        str_contains($thumbSource, DIRECTORY_SEPARATOR);
 
                         if ($isLocalPath && file_exists($thumbSource)) {
                             $thumbFilename         = basename($thumbSource);
@@ -512,6 +610,7 @@ class InstagramDownloaderController extends Controller
             ]);
 
             return response()->json($jsonOutput);
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
         } catch (\Exception $e) {

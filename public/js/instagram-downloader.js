@@ -1,14 +1,6 @@
 /**
  * Instagram Downloader - Pure JavaScript
  * IGReelDownloader.net
- * 
- * Features:
- * - Instagram URL validation
- * - Async fetch with progress handling
- * - Preview rendering (Reels, Videos, Photos, Carousel, Stories)
- * - Download trigger logic
- * - Error handling
- * - FAQ accordion
  */
 
 (function () {

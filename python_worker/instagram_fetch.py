@@ -8,20 +8,6 @@ Supports: Reels, Videos, Photos, Stories, Carousel posts.
 
 Usage:
     python instagram_fetch.py <instagram_url> <download_path> <cookies_json> [yt_dlp_path]
-
-Arguments:
-    instagram_url  - The Instagram URL to download
-    download_path  - Directory to save downloaded files
-    cookies_json   - JSON array of cookie file paths to try sequentially
-    yt_dlp_path    - Optional path to yt-dlp binary (default: yt-dlp)
-
-Outputs JSON to stdout with:
-- success: boolean
-- type: reel | video | photo | carousel | story
-- username: Instagram username
-- caption: Post caption
-- thumbnail: Thumbnail URL
-- items: Array of downloaded files with paths and metadata
 """
 
 import sys
@@ -29,11 +15,10 @@ import os
 import json
 import subprocess
 import re
-import shutil
 from pathlib import Path
 
 
-def log_error(message, error_type="unknown", cookies_tried=0):
+def log_error(message, error_type="unknown", cookies_tried=0, debug_info=None):
     """Output error as JSON and exit."""
     output = {
         "success": False,
@@ -41,6 +26,8 @@ def log_error(message, error_type="unknown", cookies_tried=0):
         "error_type": error_type,
         "cookies_tried": cookies_tried
     }
+    if debug_info:
+        output["debug"] = debug_info
     print(json.dumps(output))
     sys.exit(1)
 
@@ -106,7 +93,6 @@ def get_content_type(url, info_dict=None):
         return 'video'
 
     if info_dict:
-        # Check if it's a carousel (multiple entries)
         entries = info_dict.get('entries', [])
         if len(entries) > 1:
             return 'carousel'
@@ -114,14 +100,12 @@ def get_content_type(url, info_dict=None):
         if info_dict.get('_type') == 'playlist':
             return 'carousel'
 
-        # Check media type from yt-dlp info
         ext = info_dict.get('ext', '')
         if ext in ['mp4', 'webm', 'mkv']:
             return 'video'
         if ext in ['jpg', 'jpeg', 'png', 'webp']:
             return 'photo'
 
-    # Default based on URL pattern
     if '/p/' in url_lower:
         return 'post'
 
@@ -148,57 +132,98 @@ def get_quality_label(info_dict):
     return 'Original'
 
 
-def find_ytdlp_binary(ytdlp_path):
+def find_ytdlp_binary(ytdlp_input):
     """Find a working yt-dlp binary."""
-    # Try provided path first
-    if ytdlp_path and os.path.isfile(ytdlp_path):
-        return ytdlp_path
-
-    # Try common locations
-    candidates = [
-        ytdlp_path,
+    import shutil
+    
+    candidates = []
+    
+    # Add the provided path first
+    if ytdlp_input:
+        candidates.append(ytdlp_input)
+    
+    # Add common locations
+    candidates.extend([
         'yt-dlp',
         '/usr/local/bin/yt-dlp',
         '/usr/bin/yt-dlp',
-        shutil.which('yt-dlp'),
-    ]
-
-    for candidate in candidates:
-        if candidate:
-            try:
-                result = subprocess.run(
-                    [candidate, '--version'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                if result.returncode == 0:
-                    log_debug(f"Found yt-dlp: {candidate} (version: {result.stdout.strip()})")
-                    return candidate
-            except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError):
-                continue
+        '/home/ubuntu/.local/bin/yt-dlp',
+        '/root/.local/bin/yt-dlp',
+    ])
+    
+    # Add shutil.which result
+    which_result = shutil.which('yt-dlp')
+    if which_result:
+        candidates.insert(1, which_result)
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_candidates = []
+    for c in candidates:
+        if c and c not in seen:
+            seen.add(c)
+            unique_candidates.append(c)
+    
+    log_debug(f"Searching for yt-dlp in: {unique_candidates}")
+    
+    for candidate in unique_candidates:
+        if not candidate:
+            continue
+        try:
+            # Check if it's a file that exists
+            if os.path.isfile(candidate):
+                log_debug(f"Found yt-dlp binary at: {candidate}")
+                return candidate
+            
+            # Try running it
+            result = subprocess.run(
+                [candidate, '--version'],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                env=get_env()
+            )
+            if result.returncode == 0:
+                log_debug(f"Found working yt-dlp: {candidate} (version: {result.stdout.strip()})")
+                return candidate
+        except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError, OSError) as e:
+            log_debug(f"yt-dlp candidate {candidate} failed: {e}")
+            continue
 
     return None
 
 
-def run_ytdlp(args, timeout=120, env=None):
+def get_env():
+    """Get environment variables for subprocess."""
+    env = os.environ.copy()
+    
+    # Ensure HOME is set
+    if 'HOME' not in env or not env['HOME']:
+        env['HOME'] = '/tmp'
+    
+    # Ensure PATH includes common binary locations
+    path_additions = ['/usr/local/bin', '/usr/bin', '/bin', '/home/ubuntu/.local/bin']
+    current_path = env.get('PATH', '')
+    for p in path_additions:
+        if p not in current_path:
+            current_path = p + ':' + current_path
+    env['PATH'] = current_path
+    
+    return env
+
+
+def run_ytdlp(args, timeout=120):
     """Run yt-dlp with proper error handling."""
     try:
-        # Merge environment
-        run_env = os.environ.copy()
-        if env:
-            run_env.update(env)
-
-        # Ensure HOME is set (needed on some systems)
-        if 'HOME' not in run_env:
-            run_env['HOME'] = '/tmp'
-
+        log_debug(f"Running command: {' '.join(args[:5])}...")
+        
         result = subprocess.run(
             args,
             capture_output=True,
             text=True,
             timeout=timeout,
-            env=run_env
+            env=get_env(),
+            cwd=os.path.dirname(os.path.abspath(__file__))  # Run from script directory
         )
 
         return result.returncode, result.stdout, result.stderr
@@ -213,26 +238,76 @@ def run_ytdlp(args, timeout=120, env=None):
         return -5, '', f'Unexpected error: {str(e)}'
 
 
+def fetch_metadata(url, cookies_path, ytdlp_bin):
+    """Fetch metadata using yt-dlp --dump-json."""
+    
+    # Verify cookie file is readable
+    if not os.path.isfile(cookies_path):
+        return None, f"Cookie file does not exist: {cookies_path}"
+    
+    if not os.access(cookies_path, os.R_OK):
+        return None, f"Cookie file is not readable: {cookies_path}"
+    
+    cmd = [
+        ytdlp_bin,
+        '--cookies', cookies_path,
+        '--dump-json',
+        '--no-download',
+        '--no-warnings',
+        '--no-check-certificates',
+        '--socket-timeout', '30',
+        '--extractor-args', 'instagram:api_only=false',
+        url
+    ]
+
+    log_debug(f"Fetching metadata with cookie: {os.path.basename(cookies_path)}")
+
+    return_code, stdout, stderr = run_ytdlp(cmd, timeout=60)
+
+    if return_code != 0:
+        combined = (stderr + '\n' + stdout).strip()
+        log_debug(f"Metadata fetch failed (code {return_code}): {combined[:300]}")
+        return None, combined
+
+    # Parse JSON output
+    output_lines = stdout.strip().split('\n')
+    entries = []
+
+    for line in output_lines:
+        if line.strip():
+            try:
+                entry = json.loads(line)
+                entries.append(entry)
+            except json.JSONDecodeError:
+                continue
+
+    if not entries:
+        return None, "No content found at this URL."
+
+    main_info = entries[0].copy()
+    if len(entries) > 1:
+        main_info['entries'] = entries
+        main_info['_type'] = 'playlist'
+
+    return main_info, None
+
+
 def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='post'):
     """Download media using yt-dlp."""
-    # Ensure download path exists
     Path(download_path).mkdir(parents=True, exist_ok=True)
 
-    # Build output template
     output_template = os.path.join(download_path, '%(id)s_%(autonumber)s.%(ext)s')
 
-    # Base command
     cmd = [
         ytdlp_bin,
         '--cookies', cookies_path,
         '--no-warnings',
+        '--no-check-certificates',
         '--no-playlist-reverse',
         '--socket-timeout', '30',
-        '--retries', '3',
         '-o', output_template,
     ]
 
-    # For videos/reels, merge to mp4 and get thumbnails
     if content_type in ['reel', 'video', 'tv', 'story']:
         cmd += [
             '--merge-output-format', 'mp4',
@@ -242,7 +317,7 @@ def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='po
 
     cmd.append(url)
 
-    log_debug(f"Running download command: {' '.join(cmd[:4])}...")
+    log_debug(f"Downloading media to: {download_path}")
 
     return_code, stdout, stderr = run_ytdlp(cmd, timeout=300)
 
@@ -255,7 +330,7 @@ def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='po
         media_files = [f for f in downloaded_files if f.suffix.lower() in media_exts and f.is_file()]
 
         if media_files:
-            log_debug(f"Found {len(media_files)} media files despite return code {return_code}")
+            log_debug(f"Found {len(media_files)} media files despite error")
             return sorted(media_files), None
 
         return None, combined_output
@@ -263,7 +338,6 @@ def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='po
     # Find downloaded files
     downloaded_files = list(Path(download_path).glob('*'))
 
-    # Separate actual media from thumbnails
     media_exts = {'.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp'}
     image_exts = {'.jpg', '.jpeg', '.png', '.webp'}
 
@@ -271,7 +345,6 @@ def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='po
     video_files = [f for f in all_files if f.suffix.lower() in {'.mp4', '.webm', '.mkv'}]
     image_files = [f for f in all_files if f.suffix.lower() in image_exts]
 
-    # Determine what to return based on content type
     if content_type in ['reel', 'video', 'tv', 'story']:
         if video_files:
             media_files = sorted(video_files)
@@ -289,68 +362,27 @@ def download_media(url, download_path, cookies_path, ytdlp_bin, content_type='po
     return media_files, None
 
 
-def fetch_metadata(url, cookies_path, ytdlp_bin):
-    """Fetch metadata using yt-dlp --dump-json."""
-    cmd = [
-        ytdlp_bin,
-        '--cookies', cookies_path,
-        '--dump-json',
-        '--no-download',
-        '--no-warnings',
-        '--socket-timeout', '30',
-        url
-    ]
-
-    log_debug(f"Fetching metadata for URL: {url[:50]}...")
-
-    return_code, stdout, stderr = run_ytdlp(cmd, timeout=60)
-
-    if return_code != 0:
-        return None, (stderr + '\n' + stdout).strip()
-
-    # Parse JSON output (might be multiple lines for carousel)
-    output_lines = stdout.strip().split('\n')
-    entries = []
-
-    for line in output_lines:
-        if line.strip():
-            try:
-                entry = json.loads(line)
-                entries.append(entry)
-            except json.JSONDecodeError:
-                continue
-
-    if not entries:
-        return None, "No content found at this URL."
-
-    # Return first entry as main info, with all entries for carousel
-    main_info = entries[0].copy()
-    if len(entries) > 1:
-        main_info['entries'] = entries
-        main_info['_type'] = 'playlist'
-
-    return main_info, None
-
-
 def try_with_cookie(url, download_path, cookie_path, ytdlp_bin, cookie_index):
     """Try to fetch and download with a specific cookie file."""
     cookie_name = os.path.basename(cookie_path)
     log_debug(f"Trying cookie #{cookie_index + 1}: {cookie_name}")
 
-    # Verify cookie file exists and is not empty
+    # Verify cookie file
     if not os.path.isfile(cookie_path):
-        return None, f"Cookie file not found: {cookie_name}", "cookie_not_found", False
+        return None, f"Cookie file not found: {cookie_name}", "cookie_not_found", True
 
     try:
         file_size = os.path.getsize(cookie_path)
         if file_size == 0:
-            return None, f"Cookie file is empty: {cookie_name}", "cookie_empty", False
-        if file_size < 100:
-            return None, f"Cookie file seems invalid: {cookie_name}", "cookie_invalid", True
+            return None, f"Cookie file is empty: {cookie_name}", "cookie_empty", True
+        if file_size < 50:
+            return None, f"Cookie file too small ({file_size} bytes): {cookie_name}", "cookie_invalid", True
+        
+        log_debug(f"Cookie file size: {file_size} bytes")
     except OSError as e:
         return None, f"Cannot read cookie file: {str(e)}", "cookie_unreadable", True
 
-    # Fetch metadata first
+    # Fetch metadata
     info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_bin)
 
     if error_msg:
@@ -360,7 +392,6 @@ def try_with_cookie(url, download_path, cookie_path, ytdlp_bin, cookie_index):
             return None, error_msg, "cookie_error", True
         return None, error_msg, "unknown_error", True
 
-    # Determine content type
     content_type = get_content_type(url, info_dict)
     log_debug(f"Detected content type: {content_type}")
 
@@ -376,7 +407,6 @@ def try_with_cookie(url, download_path, cookie_path, ytdlp_bin, cookie_index):
             return None, error_msg, "cookie_error", True
         return None, error_msg, "download_error", True
 
-    # Success!
     return {
         'info_dict': info_dict,
         'media_files': media_files,
@@ -398,6 +428,13 @@ def main():
     cookies_json = sys.argv[3]
     ytdlp_input = sys.argv[4] if len(sys.argv) >= 5 else 'yt-dlp'
 
+    log_debug(f"Script started")
+    log_debug(f"URL: {url}")
+    log_debug(f"Download path: {download_path}")
+    log_debug(f"yt-dlp input: {ytdlp_input}")
+    log_debug(f"Working directory: {os.getcwd()}")
+    log_debug(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+
     # Validate URL
     if not validate_url(url):
         log_error("Invalid Instagram URL format.", "invalid_url")
@@ -413,31 +450,37 @@ def main():
     if not cookie_files:
         log_error("No cookie files provided.", "cookies_missing", 0)
 
-    log_debug(f"Found {len(cookie_files)} cookie file(s) to try")
+    log_debug(f"Cookie files to try: {len(cookie_files)}")
+    for i, cf in enumerate(cookie_files):
+        exists = os.path.isfile(cf)
+        log_debug(f"  Cookie {i+1}: {cf} (exists: {exists})")
 
     # Find yt-dlp binary
     ytdlp_bin = find_ytdlp_binary(ytdlp_input)
 
     if not ytdlp_bin:
         log_error(
-            f"yt-dlp binary not found. Tried: {ytdlp_input}",
-            "ytdlp_missing"
+            f"yt-dlp binary not found. Tried: {ytdlp_input}. Please install yt-dlp or set YTDLP_PATH correctly.",
+            "ytdlp_missing",
+            debug_info={"ytdlp_input": ytdlp_input, "cwd": os.getcwd()}
         )
 
-    # Test yt-dlp is runnable
+    # Verify yt-dlp works
     return_code, stdout, stderr = run_ytdlp([ytdlp_bin, '--version'], timeout=15)
     if return_code != 0:
         log_error(
             f"yt-dlp failed to run: {stderr[:200]}",
-            "ytdlp_crashed"
+            "ytdlp_crashed",
+            debug_info={"ytdlp_bin": ytdlp_bin, "return_code": return_code}
         )
 
     log_debug(f"yt-dlp version: {stdout.strip()}")
 
-    # Try each cookie file sequentially
+    # Try each cookie file
     last_error = None
     last_error_type = None
     cookies_tried = 0
+    all_errors = []
 
     for idx, cookie_path in enumerate(cookie_files):
         cookies_tried += 1
@@ -447,23 +490,20 @@ def main():
         )
 
         if result:
-            # Success! Build response
+            # Success!
             info_dict = result['info_dict']
             media_files = result['media_files']
             content_type = result['content_type']
 
-            # Extract metadata
             username = info_dict.get('uploader', info_dict.get('uploader_id', 'instagram_user'))
             caption = info_dict.get('description', info_dict.get('title', ''))
             thumbnail = info_dict.get('thumbnail', '')
 
-            # Build items array
             items = []
             for i, file_path in enumerate(media_files):
                 ext = file_path.suffix.lower().lstrip('.')
                 is_video = ext in ['mp4', 'webm', 'mkv']
 
-                # Find thumbnail for this item
                 thumb_path = None
                 for thumb in Path(download_path).glob('*.jpg'):
                     base_name = file_path.stem.split('_')[0]
@@ -483,11 +523,9 @@ def main():
                 }
                 items.append(item)
 
-            # Update content type if carousel
             if len(items) > 1:
                 content_type = 'carousel'
 
-            # Build response
             response = {
                 "success": True,
                 "type": content_type,
@@ -502,32 +540,39 @@ def main():
             print(json.dumps(response))
             sys.exit(0)
 
-        # Store last error
+        # Store error
         last_error = error_msg
         last_error_type = error_type
+        all_errors.append({"cookie": os.path.basename(cookie_path), "error": error_msg[:200] if error_msg else "Unknown"})
 
-        # Check if we should stop trying
         if not should_retry:
-            log_debug(f"Permanent error, stopping: {error_msg[:100]}")
+            log_debug(f"Permanent error, stopping: {error_msg[:100] if error_msg else 'Unknown'}")
             break
 
         log_debug(f"Cookie #{idx + 1} failed, trying next...")
 
     # All cookies failed
+    debug_info = {
+        "cookies_tried": cookies_tried,
+        "all_errors": all_errors,
+        "ytdlp_bin": ytdlp_bin,
+        "cwd": os.getcwd()
+    }
+
     if last_error_type == "permanent_error":
         error_lower = (last_error or '').lower()
         if 'private' in error_lower:
-            log_error("This content is from a private account.", "private_content", cookies_tried)
+            log_error("This content is from a private account.", "private_content", cookies_tried, debug_info)
         elif 'not found' in error_lower or '404' in error_lower:
-            log_error("This post has been removed or doesn't exist.", "not_found", cookies_tried)
+            log_error("This post has been removed or doesn't exist.", "not_found", cookies_tried, debug_info)
         else:
-            log_error(last_error[:300] if last_error else "Unknown permanent error", "permanent_error", cookies_tried)
+            log_error(last_error[:300] if last_error else "Unknown permanent error", "permanent_error", cookies_tried, debug_info)
     else:
-        error_detail = last_error[:200] if last_error else 'Unknown'
         log_error(
-            f"All {cookies_tried} cookie(s) failed. Please try again later.",
+            f"All {cookies_tried} cookie(s) failed. Please check cookie files and try again.",
             "all_cookies_failed",
-            cookies_tried
+            cookies_tried,
+            debug_info
         )
 
 
