@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Test script for debugging Instagram fetch issues.
-Tests both video and photo downloads.
+Tests video, single photo, and carousel downloads.
 
 Usage:
     cd python_worker
@@ -34,10 +34,13 @@ def check_environment():
     # Check if requests is installed
     try:
         import requests
-        print(f"requests library: {requests.__version__}")
+        print(f"✓ requests library: {requests.__version__}")
     except ImportError:
-        print("requests library: NOT INSTALLED")
+        print("✗ requests library: NOT INSTALLED")
         print("  Install with: pip install requests")
+        return False
+    
+    return True
 
 
 def find_ytdlp():
@@ -81,6 +84,7 @@ def find_ytdlp():
                 print(f"  ✓ Runs successfully")
                 print(f"  Version: {result.stdout.strip()}")
                 found = candidate
+                break
             else:
                 print(f"  ✗ Failed to run: {result.stderr[:100]}")
         except Exception as e:
@@ -126,142 +130,92 @@ def check_cookies():
     return valid_cookies
 
 
-def test_video_download(ytdlp_bin, cookie_path, url):
-    """Test video/reel download."""
-    print_section(f"TESTING VIDEO DOWNLOAD")
+def test_carousel_extraction(cookies, url):
+    """Test carousel image extraction directly."""
+    print_section("TESTING CAROUSEL EXTRACTION")
     
     print(f"URL: {url}")
-    print(f"Cookie: {os.path.basename(cookie_path)}")
     
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    download_path = os.path.join(script_dir, 'test_download')
-    
-    # Clean up previous test
-    if os.path.exists(download_path):
-        shutil.rmtree(download_path)
-    os.makedirs(download_path)
-    
-    cmd = [
-        ytdlp_bin,
-        '--cookies', cookie_path,
-        '--no-warnings',
-        '--no-check-certificates',
-        '-o', os.path.join(download_path, '%(id)s.%(ext)s'),
-        '--merge-output-format', 'mp4',
-        url
-    ]
-    
-    print(f"\nExecuting yt-dlp...")
-    
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        
-        print(f"Return code: {result.returncode}")
-        
-        if result.stdout:
-            print(f"STDOUT: {result.stdout[:300]}")
-        if result.stderr:
-            print(f"STDERR: {result.stderr[:300]}")
-        
-        files = list(Path(download_path).glob('*'))
-        print(f"\nDownloaded files: {len(files)}")
-        for f in files:
-            print(f"  - {f.name} ({f.stat().st_size} bytes)")
-        
-        if result.returncode == 0 and files:
-            print("\n✓ VIDEO DOWNLOAD SUCCESS")
-            return True
-        else:
-            print("\n✗ VIDEO DOWNLOAD FAILED")
-            return False
-            
-    except Exception as e:
-        print(f"\n✗ Exception: {e}")
-        return False
-
-
-def test_photo_download(cookie_path, url):
-    """Test photo download using requests."""
-    print_section(f"TESTING PHOTO DOWNLOAD")
-    
-    print(f"URL: {url}")
-    print(f"Cookie: {os.path.basename(cookie_path)}")
-    
-    try:
-        import requests
-    except ImportError:
-        print("✗ requests library not installed!")
-        print("Install with: pip install requests")
-        return False
-    
-    # Import the extraction function from our main script
     try:
         from instagram_fetch import (
             parse_netscape_cookies, 
             extract_post_images_from_page, 
             extract_shortcode,
-            download_image_with_requests
+            find_carousel_media
         )
-    except ImportError:
-        print("✗ Could not import from instagram_fetch.py")
+    except ImportError as e:
+        print(f"✗ Could not import from instagram_fetch.py: {e}")
         return False
     
-    # Parse cookies from file
-    cookies = parse_netscape_cookies(cookie_path)
-    print(f"Parsed {len(cookies)} cookies")
+    try:
+        import requests
+    except ImportError:
+        print("✗ requests library not installed!")
+        return False
+    
+    # Parse cookies
+    cookies_dict = parse_netscape_cookies(cookies[0])
+    print(f"Parsed {len(cookies_dict)} cookies")
     
     # Extract shortcode
     shortcode = extract_shortcode(url)
     print(f"Shortcode: {shortcode}")
     
-    # Extract images
-    print(f"\nExtracting images from page...")
-    post_data = extract_post_images_from_page(url, cookies, shortcode)
+    # Fetch the page
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+    
+    session = requests.Session()
+    session.cookies.update(cookies_dict)
+    response = session.get(url, headers=headers, timeout=30)
+    html = response.text
+    
+    print(f"Page HTML length: {len(html)}")
+    
+    # Check for carousel indicators
+    has_sidecar = '"edge_sidecar_to_children"' in html
+    has_carousel_media = '"carousel_media"' in html
+    has_graph_sidecar = '"GraphSidecar"' in html
+    
+    print(f"\nCarousel indicators in HTML:")
+    print(f"  edge_sidecar_to_children: {has_sidecar}")
+    print(f"  carousel_media: {has_carousel_media}")
+    print(f"  GraphSidecar: {has_graph_sidecar}")
+    
+    # Try carousel extraction
+    if has_sidecar or has_carousel_media or has_graph_sidecar:
+        print("\n  → Carousel detected, extracting images...")
+        carousel_images = find_carousel_media(html, shortcode)
+        print(f"  Found {len(carousel_images)} carousel images")
+        for i, img in enumerate(carousel_images):
+            print(f"    {i+1}. {img[:70]}...")
+    else:
+        print("\n  → No carousel indicators found")
+    
+    # Full extraction
+    print(f"\nFull extraction result:")
+    post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
     
     image_urls = post_data.get('image_urls', [])
     username = post_data.get('username', 'unknown')
-    caption = post_data.get('caption', '')
+    is_carousel = post_data.get('is_carousel', False)
     
-    print(f"\nExtracted data:")
     print(f"  Username: {username}")
-    print(f"  Caption: {caption[:100] if caption else 'None'}...")
-    print(f"  Image URLs found: {len(image_urls)}")
+    print(f"  Is carousel: {is_carousel}")
+    print(f"  Total images: {len(image_urls)}")
     
-    for i, img_url in enumerate(image_urls):
-        print(f"    {i+1}. {img_url[:80]}...")
+    for i, img in enumerate(image_urls):
+        print(f"    {i+1}. {img[:70]}...")
     
-    if not image_urls:
-        print("\n✗ No image URLs found")
-        return False
-    
-    # Download first image
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    download_path = os.path.join(script_dir, 'test_download')
-    os.makedirs(download_path, exist_ok=True)
-    
-    print(f"\nDownloading {len(image_urls)} image(s)...")
-    
-    downloaded = 0
-    for idx, img_url in enumerate(image_urls):
-        img_path = os.path.join(download_path, f'{shortcode}_{idx+1}.jpg')
-        if download_image_with_requests(img_url, img_path, cookies):
-            size = os.path.getsize(img_path)
-            print(f"  ✓ Downloaded image {idx+1}: {size} bytes")
-            downloaded += 1
-        else:
-            print(f"  ✗ Failed to download image {idx+1}")
-    
-    if downloaded > 0:
-        print(f"\n✓ PHOTO DOWNLOAD SUCCESS ({downloaded}/{len(image_urls)} images)")
-        return True
-    else:
-        print("\n✗ PHOTO DOWNLOAD FAILED")
-        return False
+    return len(image_urls) > 0
 
 
-def test_full_script(ytdlp_bin, cookies, url, content_type='video'):
+def test_full_script(ytdlp_bin, cookies, url, expected_type='auto'):
     """Test the full instagram_fetch.py script."""
-    print_section(f"TESTING FULL SCRIPT ({content_type.upper()})")
+    print_section(f"TESTING FULL SCRIPT ({expected_type.upper()})")
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     python_script = os.path.join(script_dir, 'instagram_fetch.py')
@@ -298,28 +252,37 @@ def test_full_script(ytdlp_bin, cookies, url, content_type='video'):
         print(f"\nReturn code: {result.returncode}")
         
         if result.stderr:
-            print(f"\nDebug output:")
-            for line in result.stderr.strip().split('\n')[-15:]:
+            print(f"\nDebug output (last 20 lines):")
+            lines = result.stderr.strip().split('\n')
+            for line in lines[-20:]:
                 print(f"  {line}")
         
         if result.stdout:
             print(f"\nJSON output:")
             try:
-                # Find the JSON line in output
                 for line in result.stdout.strip().split('\n'):
                     line = line.strip()
                     if line.startswith('{'):
                         data = json.loads(line)
-                        print(json.dumps(data, indent=2)[:800])
+                        
+                        print(f"\n  Success: {data.get('success')}")
+                        print(f"  Type: {data.get('type')}")
+                        print(f"  Username: {data.get('username')}")
+                        print(f"  Items: {len(data.get('items', []))}")
+                        
+                        for item in data.get('items', []):
+                            print(f"    - {item.get('filename')} ({item.get('type')}, {item.get('format')})")
                         
                         if data.get('success'):
-                            print(f"\n✓ FULL SCRIPT SUCCESS")
-                            print(f"  Type: {data.get('type')}")
-                            print(f"  Username: {data.get('username')}")
-                            print(f"  Items: {len(data.get('items', []))}")
+                            item_count = len(data.get('items', []))
+                            detected_type = data.get('type')
                             
-                            for item in data.get('items', []):
-                                print(f"    - {item.get('filename')} ({item.get('type')}, {item.get('format')})")
+                            if expected_type == 'carousel' and item_count <= 1:
+                                print(f"\n⚠ WARNING: Expected carousel but got {item_count} item(s)")
+                            elif expected_type == 'photo' and item_count > 1:
+                                print(f"\n⚠ WARNING: Expected single photo but got {item_count} item(s)")
+                            else:
+                                print(f"\n✓ SUCCESS: Downloaded {item_count} item(s) as {detected_type}")
                             
                             return True
                         else:
@@ -333,7 +296,7 @@ def test_full_script(ytdlp_bin, cookies, url, content_type='video'):
         files = list(Path(download_path).glob('*'))
         print(f"\nDownloaded files: {len(files)}")
         for f in files:
-            print(f"  - {f.name} ({f.stat().st_size} bytes)")
+            print(f"  - {f.name} ({f.stat().st_size:,} bytes)")
         
         return len(files) > 0
         
@@ -352,7 +315,10 @@ def main():
     print(" INSTAGRAM DOWNLOADER DEBUG TOOL")
     print("=" * 60)
     
-    check_environment()
+    if not check_environment():
+        print("\n✗ Environment check failed. Please install missing dependencies.")
+        return
+    
     ytdlp_bin = find_ytdlp()
     
     if not ytdlp_bin:
@@ -370,47 +336,73 @@ def main():
     print("\n1. Test video/reel download")
     print("2. Test single photo download")
     print("3. Test carousel (multi-photo) download")
-    print("4. Test all (video + single photo + carousel)")
-    print("5. Custom URL test")
+    print("4. Test all types")
+    print("5. Test carousel extraction only (debug)")
+    print("6. Custom URL test")
     
-    choice = input("\nEnter choice (1-5) [4]: ").strip() or "4"
+    choice = input("\nEnter choice (1-6) [4]: ").strip() or "4"
     
-    # Test URLs
+    # Test URLs - use known working examples
     video_url = "https://www.instagram.com/reel/DR94FUYDOYH/"
     single_photo_url = "https://www.instagram.com/p/DT4YMpcD0ZO/"  # Single image post
     carousel_url = "https://www.instagram.com/p/DT7mBohAds4/"  # Multi-image carousel
     
     if choice == "1":
-        test_full_script(ytdlp_bin, cookies, video_url, 'video')
+        test_full_script(ytdlp_bin, cookies, video_url, 'reel')
+    
     elif choice == "2":
-        print("\n--- Testing Single Photo ---")
-        test_photo_download(cookies[0], single_photo_url)
-        print("\n--- Testing Full Script with Single Photo ---")
         test_full_script(ytdlp_bin, cookies, single_photo_url, 'photo')
+    
     elif choice == "3":
-        print("\n--- Testing Carousel ---")
-        test_photo_download(cookies[0], carousel_url)
+        print("\n--- Testing Carousel Extraction Debug ---")
+        test_carousel_extraction(cookies, carousel_url)
         print("\n--- Testing Full Script with Carousel ---")
         test_full_script(ytdlp_bin, cookies, carousel_url, 'carousel')
+    
     elif choice == "4":
-        print("\n--- Testing Video ---")
-        test_full_script(ytdlp_bin, cookies, video_url, 'video')
-        print("\n--- Testing Single Photo ---")
-        test_full_script(ytdlp_bin, cookies, single_photo_url, 'photo')
-        print("\n--- Testing Carousel ---")
-        test_full_script(ytdlp_bin, cookies, carousel_url, 'carousel')
+        results = {}
+        
+        print("\n" + "=" * 60)
+        print(" TESTING VIDEO/REEL")
+        print("=" * 60)
+        results['video'] = test_full_script(ytdlp_bin, cookies, video_url, 'reel')
+        
+        print("\n" + "=" * 60)
+        print(" TESTING SINGLE PHOTO")
+        print("=" * 60)
+        results['photo'] = test_full_script(ytdlp_bin, cookies, single_photo_url, 'photo')
+        
+        print("\n" + "=" * 60)
+        print(" TESTING CAROUSEL")
+        print("=" * 60)
+        results['carousel'] = test_full_script(ytdlp_bin, cookies, carousel_url, 'carousel')
+        
+        print("\n" + "=" * 60)
+        print(" SUMMARY")
+        print("=" * 60)
+        for test_type, success in results.items():
+            status = "✓ PASS" if success else "✗ FAIL"
+            print(f"  {test_type}: {status}")
+    
     elif choice == "5":
+        custom_url = input("Enter carousel URL [default test URL]: ").strip()
+        if not custom_url:
+            custom_url = carousel_url
+        test_carousel_extraction(cookies, custom_url)
+    
+    elif choice == "6":
         custom_url = input("Enter Instagram URL: ").strip()
         if custom_url:
-            # Determine type from URL
+            # Determine expected type from URL
             if '/reel/' in custom_url.lower():
-                test_full_script(ytdlp_bin, cookies, custom_url, 'reel')
+                expected = 'reel'
             else:
-                # Try photo extraction first
-                print("\n--- Testing Photo Extraction ---")
-                test_photo_download(cookies[0], custom_url)
-                print("\n--- Testing Full Script ---")
-                test_full_script(ytdlp_bin, cookies, custom_url, 'custom')
+                expected = 'auto'
+            
+            print("\n--- Testing Extraction ---")
+            test_carousel_extraction(cookies, custom_url)
+            print("\n--- Testing Full Script ---")
+            test_full_script(ytdlp_bin, cookies, custom_url, expected)
     
     print_section("DONE")
     print("\nCheck the test_download folder for downloaded files.")

@@ -241,6 +241,275 @@ def extract_shortcode(url):
     return hashlib.md5(url.encode()).hexdigest()[:12]
 
 
+def extract_json_from_html(html):
+    """Extract all JSON objects from HTML that might contain media data."""
+    json_objects = []
+    
+    # Pattern 1: Look for require or define calls with JSON
+    patterns = [
+        r'window\._sharedData\s*=\s*(\{.+?\});',
+        r'window\.__additionalDataLoaded\s*\([^,]+,\s*(\{.+?\})\s*\)',
+        r'"media":\s*(\{.+?\})\s*[,}]',
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, html, re.DOTALL)
+        for match in matches:
+            try:
+                obj = json.loads(match)
+                json_objects.append(obj)
+            except:
+                pass
+    
+    return json_objects
+
+
+def find_carousel_media(html, shortcode):
+    """
+    Find carousel media items from Instagram HTML.
+    Returns list of image URLs.
+    """
+    image_urls = []
+    
+    log_debug(f"Searching for carousel media with shortcode: {shortcode}")
+    
+    # Method 1: Look for edge_sidecar_to_children (carousel indicator)
+    # This contains all carousel items
+    sidecar_pattern = r'"edge_sidecar_to_children"\s*:\s*\{\s*"edges"\s*:\s*\[(.*?)\]\s*\}'
+    sidecar_match = re.search(sidecar_pattern, html, re.DOTALL)
+    
+    if sidecar_match:
+        log_debug("Found edge_sidecar_to_children (carousel)")
+        edges_content = sidecar_match.group(1)
+        
+        # Extract each node's display_url
+        node_pattern = r'\{\s*"node"\s*:\s*\{[^}]*"display_url"\s*:\s*"([^"]+)"[^}]*\}'
+        node_urls = re.findall(node_pattern, edges_content, re.DOTALL)
+        
+        for url in node_urls:
+            decoded_url = url.replace('\\u0026', '&').replace('\\/', '/')
+            if decoded_url and 'cdninstagram.com' in decoded_url:
+                if decoded_url not in image_urls:
+                    image_urls.append(decoded_url)
+                    log_debug(f"Found carousel item: {decoded_url[:60]}...")
+    
+    # Method 2: Look for carousel_media array
+    carousel_pattern = r'"carousel_media"\s*:\s*\[(.*?)\]'
+    carousel_match = re.search(carousel_pattern, html, re.DOTALL)
+    
+    if carousel_match and not image_urls:
+        log_debug("Found carousel_media array")
+        carousel_content = carousel_match.group(1)
+        
+        # Extract image_versions2 -> candidates -> url
+        url_pattern = r'"url"\s*:\s*"([^"]+)"'
+        urls = re.findall(url_pattern, carousel_content)
+        
+        seen_bases = set()
+        for url in urls:
+            decoded_url = url.replace('\\u0026', '&').replace('\\/', '/')
+            if decoded_url and 'cdninstagram.com' in decoded_url:
+                # Get base URL without size params to dedupe
+                base = re.sub(r'/s\d+x\d+/', '/s1080x1080/', decoded_url.split('?')[0])
+                if base not in seen_bases:
+                    seen_bases.add(base)
+                    # Prefer highest quality version
+                    if '/s1080x1080/' in decoded_url or '/s1440x1440/' in decoded_url or len(seen_bases) <= 10:
+                        if decoded_url not in image_urls:
+                            image_urls.append(decoded_url)
+                            log_debug(f"Found carousel_media item: {decoded_url[:60]}...")
+    
+    # Method 3: Look for items array with image data
+    items_pattern = r'"items"\s*:\s*\[\s*\{(.*?)\}\s*\]'
+    items_match = re.search(items_pattern, html, re.DOTALL)
+    
+    if items_match and not image_urls:
+        log_debug("Found items array")
+        items_content = items_match.group(1)
+        
+        # Look for display_url or image URLs
+        url_pattern = r'"(?:display_url|url)"\s*:\s*"([^"]+cdninstagram\.com[^"]+)"'
+        urls = re.findall(url_pattern, items_content)
+        
+        for url in urls:
+            decoded_url = url.replace('\\u0026', '&').replace('\\/', '/')
+            if decoded_url not in image_urls:
+                image_urls.append(decoded_url)
+                log_debug(f"Found items array image: {decoded_url[:60]}...")
+    
+    return image_urls
+
+
+def extract_post_images_from_page(url, cookies_dict, shortcode):
+    """
+    Extract image URLs specifically for the target post.
+    Handles both single images and carousels.
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+    }
+    
+    try:
+        if HAS_REQUESTS:
+            session = requests.Session()
+            session.cookies.update(cookies_dict)
+            response = session.get(url, headers=headers, timeout=30)
+            html = response.text
+        else:
+            req = urllib.request.Request(url, headers=headers)
+            cookie_header = '; '.join([f'{k}={v}' for k, v in cookies_dict.items()])
+            req.add_header('Cookie', cookie_header)
+            with urllib.request.urlopen(req, timeout=30) as response:
+                html = response.read().decode('utf-8', errors='ignore')
+        
+        log_debug(f"Fetched page HTML, length: {len(html)}")
+        log_debug(f"Looking for shortcode: {shortcode}")
+        
+        image_urls = []
+        username = None
+        caption = None
+        is_carousel = False
+        
+        # Check if this is a carousel post
+        if '"edge_sidecar_to_children"' in html or '"carousel_media"' in html or '"GraphSidecar"' in html:
+            is_carousel = True
+            log_debug("Detected CAROUSEL post")
+            image_urls = find_carousel_media(html, shortcode)
+        
+        # If not carousel or carousel extraction failed, try single image extraction
+        if not image_urls:
+            log_debug("Trying single image extraction")
+            
+            # Method 1: Find display_url in the media data for this shortcode
+            # Look for the JSON block containing our shortcode
+            shortcode_pattern = rf'"shortcode"\s*:\s*"{re.escape(shortcode)}"'
+            if re.search(shortcode_pattern, html):
+                log_debug("Found shortcode in HTML")
+                
+                # Find the media block containing this shortcode
+                # Look backwards and forwards from shortcode to find display_url
+                shortcode_pos = html.find(f'"{shortcode}"')
+                if shortcode_pos != -1:
+                    # Search in a window around the shortcode
+                    window_start = max(0, shortcode_pos - 10000)
+                    window_end = min(len(html), shortcode_pos + 10000)
+                    window = html[window_start:window_end]
+                    
+                    # Find display_url in this window
+                    display_url_pattern = r'"display_url"\s*:\s*"([^"]+)"'
+                    display_urls = re.findall(display_url_pattern, window)
+                    
+                    for url_match in display_urls:
+                        decoded_url = url_match.replace('\\u0026', '&').replace('\\/', '/')
+                        if decoded_url and 'cdninstagram.com' in decoded_url:
+                            # Skip profile pictures
+                            if '/t51.2885-19/' not in decoded_url:
+                                if decoded_url not in image_urls:
+                                    image_urls.append(decoded_url)
+                                    log_debug(f"Found display_url: {decoded_url[:60]}...")
+                                    # For single image, we only need one
+                                    if not is_carousel:
+                                        break
+            
+            # Method 2: Try og:image meta tag (single main image)
+            if not image_urls:
+                og_pattern = r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']'
+                og_match = re.search(og_pattern, html)
+                if og_match:
+                    decoded_url = og_match.group(1).replace('&amp;', '&')
+                    if decoded_url and 'cdninstagram.com' in decoded_url:
+                        image_urls.append(decoded_url)
+                        log_debug(f"Found og:image: {decoded_url[:60]}...")
+            
+            # Method 3: Look for image_versions2 candidates
+            if not image_urls:
+                candidates_pattern = r'"image_versions2"\s*:\s*\{\s*"candidates"\s*:\s*\[(.*?)\]'
+                candidates_match = re.search(candidates_pattern, html, re.DOTALL)
+                if candidates_match:
+                    candidates_content = candidates_match.group(1)
+                    url_pattern = r'"url"\s*:\s*"([^"]+)"'
+                    urls = re.findall(url_pattern, candidates_content)
+                    
+                    # Get highest resolution (first one is usually largest)
+                    if urls:
+                        decoded_url = urls[0].replace('\\u0026', '&').replace('\\/', '/')
+                        if decoded_url and 'cdninstagram.com' in decoded_url:
+                            image_urls.append(decoded_url)
+                            log_debug(f"Found image_versions2 candidate: {decoded_url[:60]}...")
+        
+        # Extract username
+        username_patterns = [
+            r'"username"\s*:\s*"([^"]+)"',
+            r'"owner"\s*:\s*\{[^}]*"username"\s*:\s*"([^"]+)"',
+        ]
+        for pattern in username_patterns:
+            username_match = re.search(pattern, html)
+            if username_match:
+                username = username_match.group(1)
+                break
+        
+        # Extract caption
+        caption_patterns = [
+            r'"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
+            r'"caption"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
+            r'"accessibility_caption"\s*:\s*"([^"]*)"',
+        ]
+        for pattern in caption_patterns:
+            caption_match = re.search(pattern, html)
+            if caption_match:
+                caption = caption_match.group(1)
+                try:
+                    caption = caption.encode().decode('unicode_escape')
+                except:
+                    pass
+                break
+        
+        # Deduplicate images by base URL
+        if len(image_urls) > 1:
+            seen_bases = set()
+            unique_urls = []
+            for img_url in image_urls:
+                # Extract a unique identifier from the URL
+                # Instagram URLs have patterns like /123456789_123456789_123456789_n.jpg
+                id_match = re.search(r'/(\d+_\d+_\d+_\w+)\.(jpg|jpeg|png|webp)', img_url, re.I)
+                if id_match:
+                    img_id = id_match.group(1)
+                else:
+                    # Fallback: use the filename part
+                    img_id = img_url.split('/')[-1].split('?')[0]
+                
+                if img_id not in seen_bases:
+                    seen_bases.add(img_id)
+                    unique_urls.append(img_url)
+            
+            image_urls = unique_urls
+        
+        log_debug(f"Final result: {len(image_urls)} image(s), is_carousel={is_carousel}")
+        
+        return {
+            'image_urls': image_urls,
+            'username': username,
+            'caption': caption,
+            'is_carousel': is_carousel or len(image_urls) > 1
+        }
+        
+    except Exception as e:
+        log_debug(f"Error extracting images from page: {e}")
+        import traceback
+        log_debug(traceback.format_exc())
+        return {
+            'image_urls': [],
+            'username': None,
+            'caption': None,
+            'is_carousel': False
+        }
+
+
 def fetch_metadata(url, cookies_path, ytdlp_bin):
     """Fetch metadata using yt-dlp --dump-json."""
     cmd = [
@@ -297,196 +566,6 @@ def is_photo_only_error(error_text):
     return any(indicator in error_lower for indicator in photo_indicators)
 
 
-def extract_post_images_from_page(url, cookies_dict, shortcode):
-    """
-    Extract image URLs specifically for the target post only.
-    Uses the shortcode to identify the correct post data.
-    """
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-    }
-    
-    try:
-        if HAS_REQUESTS:
-            session = requests.Session()
-            session.cookies.update(cookies_dict)
-            response = session.get(url, headers=headers, timeout=30)
-            html = response.text
-        else:
-            req = urllib.request.Request(url, headers=headers)
-            cookie_header = '; '.join([f'{k}={v}' for k, v in cookies_dict.items()])
-            req.add_header('Cookie', cookie_header)
-            with urllib.request.urlopen(req, timeout=30) as response:
-                html = response.read().decode('utf-8', errors='ignore')
-        
-        log_debug(f"Fetched page HTML, length: {len(html)}")
-        log_debug(f"Looking for shortcode: {shortcode}")
-        
-        image_urls = []
-        username = None
-        caption = None
-        
-        # Method 1: Find the specific media data containing our shortcode
-        # Look for the JSON that contains this specific shortcode
-        
-        # Pattern to find media data blocks
-        media_patterns = [
-            # Pattern for shortcode_media
-            rf'"shortcode"\s*:\s*"{re.escape(shortcode)}"[^{{}}]*"display_url"\s*:\s*"([^"]+)"',
-            # Alternative pattern
-            rf'"code"\s*:\s*"{re.escape(shortcode)}"[^{{}}]*"display_url"\s*:\s*"([^"]+)"',
-        ]
-        
-        for pattern in media_patterns:
-            matches = re.findall(pattern, html, re.DOTALL)
-            for match in matches:
-                decoded_url = match.replace('\\u0026', '&').replace('\\/', '/')
-                if decoded_url and 'cdninstagram.com' in decoded_url:
-                    if decoded_url not in image_urls:
-                        image_urls.append(decoded_url)
-                        log_debug(f"Found image via shortcode pattern: {decoded_url[:80]}")
-        
-        # Method 2: Look for the xdt_api__v1__media JSON block containing our shortcode
-        xdt_pattern = rf'xdt_api__v1__media__shortcode__web_info.*?"shortcode"\s*:\s*"{re.escape(shortcode)}"'
-        if re.search(xdt_pattern, html, re.DOTALL):
-            log_debug("Found xdt_api block for this shortcode")
-            
-            # Find the specific block and extract display_url from it
-            # This block contains only the target post's data
-            block_start = html.find('xdt_api__v1__media__shortcode__web_info')
-            if block_start != -1:
-                # Look within a reasonable range after finding the block
-                block_section = html[block_start:block_start + 50000]
-                
-                # Check if this section contains our shortcode
-                if shortcode in block_section:
-                    # Extract display_url values from this section only
-                    display_urls = re.findall(r'"display_url"\s*:\s*"([^"]+)"', block_section)
-                    
-                    for url_match in display_urls:
-                        decoded_url = url_match.replace('\\u0026', '&').replace('\\/', '/')
-                        if decoded_url and 'cdninstagram.com' in decoded_url:
-                            # Filter out profile pictures and small thumbnails
-                            if '/t51.2885-19/' not in decoded_url:  # Profile pics
-                                if decoded_url not in image_urls:
-                                    image_urls.append(decoded_url)
-                                    log_debug(f"Found image in xdt block: {decoded_url[:80]}")
-        
-        # Method 3: Look for carousel items specifically for this post
-        # Pattern: Find carousel_media containing our shortcode
-        carousel_pattern = rf'"edge_sidecar_to_children"[^}}]*"shortcode"\s*:\s*"{re.escape(shortcode)}"'
-        
-        if re.search(carousel_pattern, html, re.DOTALL) or 'edge_sidecar_to_children' in html:
-            # Find the carousel section
-            sidecar_match = re.search(r'"edge_sidecar_to_children"\s*:\s*\{[^}]*"edges"\s*:\s*\[(.*?)\]\s*\}', html, re.DOTALL)
-            if sidecar_match:
-                edges_content = sidecar_match.group(1)
-                # Extract display_url from each edge/node
-                edge_urls = re.findall(r'"display_url"\s*:\s*"([^"]+)"', edges_content)
-                for url_match in edge_urls:
-                    decoded_url = url_match.replace('\\u0026', '&').replace('\\/', '/')
-                    if decoded_url and 'cdninstagram.com' in decoded_url:
-                        if decoded_url not in image_urls:
-                            image_urls.append(decoded_url)
-                            log_debug(f"Found carousel image: {decoded_url[:80]}")
-        
-        # Method 4: If still no images, try og:image meta tag (usually has the main image)
-        if not image_urls:
-            og_pattern = r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']'
-            og_matches = re.findall(og_pattern, html)
-            for match in og_matches:
-                decoded_url = match.replace('&amp;', '&')
-                if decoded_url and 'cdninstagram.com' in decoded_url:
-                    if decoded_url not in image_urls:
-                        image_urls.append(decoded_url)
-                        log_debug(f"Found og:image: {decoded_url[:80]}")
-        
-        # Method 5: Last resort - find display_url near our shortcode
-        if not image_urls:
-            # Find position of shortcode in HTML
-            shortcode_pos = html.find(f'"{shortcode}"')
-            if shortcode_pos != -1:
-                # Look in a window around the shortcode
-                window_start = max(0, shortcode_pos - 5000)
-                window_end = min(len(html), shortcode_pos + 10000)
-                window = html[window_start:window_end]
-                
-                display_urls = re.findall(r'"display_url"\s*:\s*"([^"]+)"', window)
-                for url_match in display_urls[:5]:  # Limit to 5 nearby images
-                    decoded_url = url_match.replace('\\u0026', '&').replace('\\/', '/')
-                    if decoded_url and 'cdninstagram.com' in decoded_url:
-                        if '/t51.2885-19/' not in decoded_url:  # Skip profile pics
-                            if decoded_url not in image_urls:
-                                image_urls.append(decoded_url)
-                                log_debug(f"Found nearby image: {decoded_url[:80]}")
-        
-        # Extract username
-        username_match = re.search(r'"username"\s*:\s*"([^"]+)"', html)
-        if username_match:
-            username = username_match.group(1)
-        
-        # Extract caption (look near shortcode)
-        caption_patterns = [
-            r'"edge_media_to_caption"[^}]*"text"\s*:\s*"([^"]*)"',
-            r'"caption"\s*:\s*\{[^}]*"text"\s*:\s*"([^"]*)"',
-            r'"accessibility_caption"\s*:\s*"([^"]*)"',
-        ]
-        for pattern in caption_patterns:
-            caption_match = re.search(pattern, html)
-            if caption_match:
-                caption = caption_match.group(1)
-                # Decode unicode escapes
-                try:
-                    caption = caption.encode().decode('unicode_escape')
-                except:
-                    pass
-                break
-        
-        log_debug(f"Extracted {len(image_urls)} image(s) for post {shortcode}")
-        
-        # Deduplicate by base URL (same image, different params)
-        if len(image_urls) > 1:
-            seen_bases = set()
-            unique_urls = []
-            for img_url in image_urls:
-                # Extract base URL without query params
-                base = img_url.split('?')[0]
-                # Also extract a hash from the path to identify same image
-                path_match = re.search(r'/([^/]+)\.(jpg|jpeg|png|webp)', base, re.I)
-                if path_match:
-                    img_id = path_match.group(1)
-                else:
-                    img_id = base
-                
-                if img_id not in seen_bases:
-                    seen_bases.add(img_id)
-                    unique_urls.append(img_url)
-            
-            image_urls = unique_urls
-            log_debug(f"After deduplication: {len(image_urls)} unique image(s)")
-        
-        return {
-            'image_urls': image_urls,
-            'username': username,
-            'caption': caption
-        }
-        
-    except Exception as e:
-        log_debug(f"Error extracting images from page: {e}")
-        import traceback
-        log_debug(traceback.format_exc())
-        return {
-            'image_urls': [],
-            'username': None,
-            'caption': None
-        }
-
-
 def download_photo_content(url, download_path, cookies_path, info_dict=None):
     """Download photo content from Instagram."""
     Path(download_path).mkdir(parents=True, exist_ok=True)
@@ -502,11 +581,12 @@ def download_photo_content(url, download_path, cookies_path, info_dict=None):
     image_urls = post_data.get('image_urls', [])
     username = post_data.get('username', 'instagram_user')
     caption = post_data.get('caption', '')
+    is_carousel = post_data.get('is_carousel', False)
     
     if not image_urls:
         return None, "Could not find any image URLs for this post.", None
     
-    log_debug(f"Downloading {len(image_urls)} image(s)")
+    log_debug(f"Downloading {len(image_urls)} image(s), is_carousel={is_carousel}")
     
     downloaded_files = []
     
@@ -538,11 +618,12 @@ def download_photo_content(url, download_path, cookies_path, info_dict=None):
     return downloaded_files, None, {
         'username': username,
         'caption': caption,
-        'thumbnail': image_urls[0] if image_urls else ''
+        'thumbnail': image_urls[0] if image_urls else '',
+        'is_carousel': is_carousel
     }
 
 
-def get_content_type(url, info_dict=None, is_photo=False):
+def get_content_type(url, info_dict=None, is_photo=False, is_carousel=False):
     """Determine content type from URL and metadata."""
     url_lower = url.lower()
     
@@ -553,11 +634,10 @@ def get_content_type(url, info_dict=None, is_photo=False):
     if '/tv/' in url_lower:
         return 'video'
     
+    if is_carousel:
+        return 'carousel'
+    
     if is_photo:
-        if info_dict:
-            entries = info_dict.get('entries', [])
-            if len(entries) > 1:
-                return 'carousel'
         return 'photo'
     
     if info_dict:
@@ -658,6 +738,7 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
     info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_bin)
     
     is_photo_post = False
+    is_carousel = False
     
     if error_msg:
         # Check if it's a "no video formats" error - means it's a photo post
@@ -677,13 +758,15 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
             is_photo_post = True
             info_dict = None
     
-    content_type = get_content_type(url, info_dict, is_photo_post)
+    content_type = get_content_type(url, info_dict, is_photo_post, is_carousel)
     log_debug(f"Content type: {content_type}, is_photo: {is_photo_post}")
     
     # Download based on content type
     extra_info = None
     if is_photo_post or content_type == 'photo':
         media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
+        if extra_info:
+            is_carousel = extra_info.get('is_carousel', False)
     else:
         # Try video download first
         media_files, error_msg = download_video_content(url, download_path, cookie_path, ytdlp_bin, content_type)
@@ -692,14 +775,18 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
         if error_msg and is_photo_only_error(error_msg):
             log_debug("Video download failed, trying as photo...")
             is_photo_post = True
-            content_type = get_content_type(url, info_dict, True)
             media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
+            if extra_info:
+                is_carousel = extra_info.get('is_carousel', False)
     
     if error_msg:
         return None, error_msg, "download_error", True
     
     if not media_files:
         return None, "No media files downloaded.", "no_media", True
+    
+    # Update content type based on results
+    content_type = get_content_type(url, info_dict, is_photo_post, is_carousel)
     
     # Build response
     username = 'instagram_user'
@@ -749,7 +836,7 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
     # Update content type based on actual downloaded items
     if len(items) > 1:
         content_type = 'carousel'
-    elif is_photo_post and len(items) == 1:
+    elif is_photo_post and len(items) == 1 and not is_carousel:
         content_type = 'photo'
     
     return {
