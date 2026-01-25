@@ -15,6 +15,7 @@ import os
 import json
 import subprocess
 import re
+import shutil
 from pathlib import Path
 
 
@@ -134,21 +135,19 @@ def get_quality_label(info_dict):
 
 def find_ytdlp_binary(ytdlp_input):
     """Find a working yt-dlp binary."""
-    import shutil
-    
     candidates = []
     
     # Add the provided path first
-    if ytdlp_input:
-        candidates.append(ytdlp_input)
+    if ytdlp_input and ytdlp_input.strip():
+        candidates.append(ytdlp_input.strip())
     
     # Add common locations
     candidates.extend([
-        'yt-dlp',
         '/usr/local/bin/yt-dlp',
         '/usr/bin/yt-dlp',
         '/home/ubuntu/.local/bin/yt-dlp',
         '/root/.local/bin/yt-dlp',
+        'yt-dlp',
     ])
     
     # Add shutil.which result
@@ -171,8 +170,8 @@ def find_ytdlp_binary(ytdlp_input):
             continue
         try:
             # Check if it's a file that exists
-            if os.path.isfile(candidate):
-                log_debug(f"Found yt-dlp binary at: {candidate}")
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                log_debug(f"Found executable yt-dlp at: {candidate}")
                 return candidate
             
             # Try running it
@@ -186,7 +185,7 @@ def find_ytdlp_binary(ytdlp_input):
             if result.returncode == 0:
                 log_debug(f"Found working yt-dlp: {candidate} (version: {result.stdout.strip()})")
                 return candidate
-        except (subprocess.TimeoutExpired, FileNotFoundError, PermissionError, OSError) as e:
+        except Exception as e:
             log_debug(f"yt-dlp candidate {candidate} failed: {e}")
             continue
 
@@ -215,15 +214,14 @@ def get_env():
 def run_ytdlp(args, timeout=120):
     """Run yt-dlp with proper error handling."""
     try:
-        log_debug(f"Running command: {' '.join(args[:5])}...")
+        log_debug(f"Running: {' '.join(args[:6])}...")
         
         result = subprocess.run(
             args,
             capture_output=True,
             text=True,
             timeout=timeout,
-            env=get_env(),
-            cwd=os.path.dirname(os.path.abspath(__file__))  # Run from script directory
+            env=get_env()
         )
 
         return result.returncode, result.stdout, result.stderr
@@ -382,7 +380,7 @@ def try_with_cookie(url, download_path, cookie_path, ytdlp_bin, cookie_index):
     except OSError as e:
         return None, f"Cannot read cookie file: {str(e)}", "cookie_unreadable", True
 
-    # Fetch metadata
+    # Fetch metadata first
     info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_bin)
 
     if error_msg:
@@ -426,14 +424,14 @@ def main():
     url = sys.argv[1]
     download_path = sys.argv[2]
     cookies_json = sys.argv[3]
-    ytdlp_input = sys.argv[4] if len(sys.argv) >= 5 else 'yt-dlp'
+    ytdlp_input = sys.argv[4] if len(sys.argv) >= 5 else '/usr/local/bin/yt-dlp'
 
     log_debug(f"Script started")
     log_debug(f"URL: {url}")
     log_debug(f"Download path: {download_path}")
     log_debug(f"yt-dlp input: {ytdlp_input}")
     log_debug(f"Working directory: {os.getcwd()}")
-    log_debug(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+    log_debug(f"User: {os.getenv('USER', 'unknown')}, UID: {os.getuid()}")
 
     # Validate URL
     if not validate_url(url):
@@ -453,16 +451,17 @@ def main():
     log_debug(f"Cookie files to try: {len(cookie_files)}")
     for i, cf in enumerate(cookie_files):
         exists = os.path.isfile(cf)
-        log_debug(f"  Cookie {i+1}: {cf} (exists: {exists})")
+        readable = os.access(cf, os.R_OK) if exists else False
+        log_debug(f"  Cookie {i+1}: {cf} (exists: {exists}, readable: {readable})")
 
     # Find yt-dlp binary
     ytdlp_bin = find_ytdlp_binary(ytdlp_input)
 
     if not ytdlp_bin:
         log_error(
-            f"yt-dlp binary not found. Tried: {ytdlp_input}. Please install yt-dlp or set YTDLP_PATH correctly.",
+            f"yt-dlp binary not found. Tried: {ytdlp_input}",
             "ytdlp_missing",
-            debug_info={"ytdlp_input": ytdlp_input, "cwd": os.getcwd()}
+            debug_info={"ytdlp_input": ytdlp_input, "cwd": os.getcwd(), "path": os.getenv('PATH', '')}
         )
 
     # Verify yt-dlp works
@@ -471,7 +470,7 @@ def main():
         log_error(
             f"yt-dlp failed to run: {stderr[:200]}",
             "ytdlp_crashed",
-            debug_info={"ytdlp_bin": ytdlp_bin, "return_code": return_code}
+            debug_info={"ytdlp_bin": ytdlp_bin, "return_code": return_code, "stderr": stderr[:300]}
         )
 
     log_debug(f"yt-dlp version: {stdout.strip()}")
@@ -543,7 +542,10 @@ def main():
         # Store error
         last_error = error_msg
         last_error_type = error_type
-        all_errors.append({"cookie": os.path.basename(cookie_path), "error": error_msg[:200] if error_msg else "Unknown"})
+        all_errors.append({
+            "cookie": os.path.basename(cookie_path), 
+            "error": error_msg[:200] if error_msg else "Unknown"
+        })
 
         if not should_retry:
             log_debug(f"Permanent error, stopping: {error_msg[:100] if error_msg else 'Unknown'}")

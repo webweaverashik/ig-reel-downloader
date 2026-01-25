@@ -132,7 +132,7 @@ class InstagramDownloaderController extends Controller
      */
     private function getPythonPath(): string
     {
-        return config('services.python.path', 'python3');
+        return config('services.python.path', '/usr/bin/python3');
     }
 
     /**
@@ -140,7 +140,7 @@ class InstagramDownloaderController extends Controller
      */
     private function getYtDlpPath(): string
     {
-        return config('services.ytdlp.path', 'yt-dlp');
+        return config('services.ytdlp.path', '/usr/local/bin/yt-dlp');
     }
 
     /**
@@ -328,6 +328,8 @@ class InstagramDownloaderController extends Controller
             'ytdlp_version'  => $ytdlpVersion,
             'base_path'      => base_path(),
             'cookies_dir'    => base_path('python_worker/cookies'),
+            'web_user'       => get_current_user(),
+            'process_user'   => posix_getpwuid(posix_geteuid())['name'] ?? 'unknown',
             'cookies'        => $status,
         ]);
     }
@@ -407,84 +409,36 @@ class InstagramDownloaderController extends Controller
                 'download_path' => $downloadPath,
             ]);
 
-            // Build command with proper escaping
-            $cmd = sprintf(
-                '%s %s %s %s %s %s 2>&1',
-                escapeshellarg($python),
-                escapeshellarg($pythonScript),
-                escapeshellarg($url),
-                escapeshellarg($downloadPath),
-                escapeshellarg($cookiesJson),
-                escapeshellarg($ytDlpPath)
-            );
+            // Build command - use shell_exec with full command for better compatibility
+            $escapedPython       = escapeshellarg($python);
+            $escapedScript       = escapeshellarg($pythonScript);
+            $escapedUrl          = escapeshellarg($url);
+            $escapedDownloadPath = escapeshellarg($downloadPath);
+            $escapedCookiesJson  = escapeshellarg($cookiesJson);
+            $escapedYtDlpPath    = escapeshellarg($ytDlpPath);
 
-            Log::debug('Executing command', ['cmd' => substr($cmd, 0, 200) . '...']);
+            $cmd = "{$escapedPython} {$escapedScript} {$escapedUrl} {$escapedDownloadPath} {$escapedCookiesJson} {$escapedYtDlpPath} 2>&1";
+
+            Log::debug('Executing command', ['cmd' => substr($cmd, 0, 300) . '...']);
+
+            // Change to script directory and execute
+            $cwd = getcwd();
+            chdir(base_path('python_worker'));
 
             // Set environment variables
-            $env         = [];
-            $env['HOME'] = sys_get_temp_dir();
-            $env['PATH'] = getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin';
-            $env['LANG'] = 'en_US.UTF-8';
+            putenv('HOME=/tmp');
+            putenv('PATH=/usr/local/bin:/usr/bin:/bin:' . getenv('PATH'));
 
-            // On Windows, don't override PATH
-            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                $env = null; // Use default environment on Windows
-            }
+            $output = shell_exec($cmd);
 
-            // Execute command
-            $descriptorSpec = [
-                0 => ['pipe', 'r'],
-                1 => ['pipe', 'w'],
-                2 => ['pipe', 'w'],
-            ];
-
-            // Change to script directory for execution
-            $cwd = base_path('python_worker');
-
-            $process = proc_open($cmd, $descriptorSpec, $pipes, $cwd, $env);
-
-            if (! is_resource($process)) {
-                Log::error('Failed to start Python process');
-                return response()->json(
-                    [
-                        'success'    => false,
-                        'error'      => 'Failed to start download process. Please try again.',
-                        'error_type' => 'proc_open_failed',
-                    ],
-                    500,
-                );
-            }
-
-            fclose($pipes[0]);
-
-            // Set timeout for reading
-            stream_set_timeout($pipes[1], 180);
-            stream_set_timeout($pipes[2], 180);
-
-            $stdout = stream_get_contents($pipes[1]);
-            $stderr = stream_get_contents($pipes[2]);
-
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-
-            $returnCode = proc_close($process);
-
-            $outputString = trim($stdout);
-            $errorString  = trim($stderr);
+            chdir($cwd);
 
             Log::info('Python script completed', [
-                'return_code' => $returnCode,
-                'stdout_len'  => strlen($stdout),
-                'stderr_len'  => strlen($stderr),
+                'output_length'  => strlen($output ?? ''),
+                'output_preview' => substr($output ?? '', 0, 500),
             ]);
 
-            if (! empty($errorString)) {
-                Log::debug('Python stderr', ['stderr' => substr($errorString, 0, 1000)]);
-            }
-
-            if (! empty($outputString)) {
-                Log::debug('Python stdout', ['stdout' => substr($outputString, 0, 1000)]);
-            }
+            $outputString = trim($output ?? '');
 
             // Parse JSON output from Python
             $jsonOutput = null;
@@ -505,14 +459,11 @@ class InstagramDownloaderController extends Controller
 
             if ($jsonOutput === null) {
                 Log::error('Failed to parse Python output', [
-                    'stdout' => substr($outputString, 0, 500),
-                    'stderr' => substr($errorString, 0, 500),
+                    'output' => substr($outputString, 0, 1000),
                 ]);
 
                 // Try to extract meaningful error
-                $combinedOutput = $outputString . "\n" . $errorString;
-
-                if (stripos($combinedOutput, 'login') !== false || stripos($combinedOutput, 'cookie') !== false) {
+                if (stripos($outputString, 'login') !== false || stripos($outputString, 'cookie') !== false) {
                     return response()->json([
                         'success'    => false,
                         'error'      => 'Instagram session expired. Please try again later.',
@@ -520,7 +471,7 @@ class InstagramDownloaderController extends Controller
                     ], 400);
                 }
 
-                if (stripos($combinedOutput, 'private') !== false) {
+                if (stripos($outputString, 'private') !== false) {
                     return response()->json([
                         'success'    => false,
                         'error'      => 'This content is from a private account.',
@@ -533,10 +484,7 @@ class InstagramDownloaderController extends Controller
                         'success'    => false,
                         'error'      => 'Failed to process Instagram content. Please try again.',
                         'error_type' => 'parse_error',
-                        'debug'      => config('app.debug') ? [
-                            'stdout' => substr($outputString, 0, 500),
-                            'stderr' => substr($errorString, 0, 500),
-                        ] : null,
+                        'debug'      => config('app.debug') ? substr($outputString, 0, 500) : null,
                     ],
                     500,
                 );
