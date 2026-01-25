@@ -1,14 +1,24 @@
-# Instagram Cookies Directory
+# Instagram Cookie Files Directory
 # 
-# Place your instagram.txt cookie file here.
-# 
-# How to export cookies:
-# 1. Install a browser extension like "Get cookies.txt LOCALLY" or "cookies.txt"
+# Place your Instagram cookie files here in Netscape format.
+# Files should have .txt extension.
+#
+# Naming convention:
+# - instagram.txt (primary cookie - tried first)
+# - instagram_1.txt, instagram_2.txt, etc. (backup cookies)
+# - account_name.txt (named by account)
+#
+# The system will try cookies sequentially if one fails.
+# Cookies are sorted by: instagram.txt first, then by modification time.
+#
+# To export cookies:
+# 1. Install a browser extension like "Get cookies.txt" or "EditThisCookie"
 # 2. Log into Instagram in your browser
 # 3. Export cookies in Netscape format
-# 4. Save the file as: instagram.txt
-# 
+# 4. Save as .txt file in this directory
+#
 # IMPORTANT:
-# - Do NOT commit your actual cookies to version control
-# - Add instagram.txt to .gitignore
-# - Cookies expire periodically - you may need to refresh them
+# - Never commit actual cookie files to git
+# - Keep cookies private and secure
+# - Rotate cookies periodically
+# - Use cookies from trusted accounts only

@@ -2,18 +2,16 @@
  * Instagram Downloader - Pure JavaScript
  * Phase 1: Core Downloader Functionality
  * 
- * This file should be placed in public/js/ for Laravel to serve it.
- * Copy from resources/js/instagram-downloader.js
- * 
  * Features:
  * - Instagram URL validation
  * - Async fetch with progress handling
- * - Preview rendering (Reels, Videos, Photos, Carousel)
+ * - Preview rendering (Reels, Videos, Photos, Carousel, Stories)
  * - Download trigger logic
  * - Error handling
+ * - FAQ accordion
  */
 
-(function() {
+(function () {
     'use strict';
 
     // ============================================
@@ -66,51 +64,64 @@
         return CONFIG.urlPatterns.some(pattern => pattern.test(url));
     }
 
-    function getContentTypeFromUrl(url) {
-        if (/\/reel\/|\/reels\//.test(url)) return 'reel';
-        if (/\/stories\//.test(url)) return 'story';
-        if (/\/tv\//.test(url)) return 'video';
-        return 'post';
-    }
-
     // ============================================
     // UI STATE MANAGEMENT
     // ============================================
     function showError(message) {
-        elements.errorText.textContent = message;
-        elements.errorMessage.classList.remove('hidden');
-        elements.successMessage.classList.add('hidden');
-        elements.previewSection.classList.add('hidden');
-        elements.loadingSection.classList.add('hidden');
+        if (elements.errorText) {
+            elements.errorText.textContent = message;
+        }
+        if (elements.errorMessage) {
+            elements.errorMessage.classList.remove('hidden');
+        }
+        if (elements.successMessage) {
+            elements.successMessage.classList.add('hidden');
+        }
+        if (elements.previewSection) {
+            elements.previewSection.classList.add('hidden');
+        }
+        if (elements.loadingSection) {
+            elements.loadingSection.classList.add('hidden');
+        }
     }
 
     function showSuccess(message) {
-        elements.successText.textContent = message;
-        elements.successMessage.classList.remove('hidden');
-        elements.errorMessage.classList.add('hidden');
+        if (elements.successText) {
+            elements.successText.textContent = message;
+        }
+        if (elements.successMessage) {
+            elements.successMessage.classList.remove('hidden');
+        }
+        if (elements.errorMessage) {
+            elements.errorMessage.classList.add('hidden');
+        }
     }
 
     function hideMessages() {
-        elements.errorMessage.classList.add('hidden');
-        elements.successMessage.classList.add('hidden');
+        if (elements.errorMessage) {
+            elements.errorMessage.classList.add('hidden');
+        }
+        if (elements.successMessage) {
+            elements.successMessage.classList.add('hidden');
+        }
     }
 
     function setLoading(loading) {
         if (loading) {
-            elements.btnText.textContent = 'Processing...';
-            elements.btnLoader.classList.remove('hidden');
-            elements.btnIcon.classList.add('hidden');
-            elements.downloadBtn.disabled = true;
-            elements.urlInput.disabled = true;
-            elements.loadingSection.classList.remove('hidden');
-            elements.previewSection.classList.add('hidden');
+            if (elements.btnText) elements.btnText.textContent = 'Processing...';
+            if (elements.btnLoader) elements.btnLoader.classList.remove('hidden');
+            if (elements.btnIcon) elements.btnIcon.classList.add('hidden');
+            if (elements.downloadBtn) elements.downloadBtn.disabled = true;
+            if (elements.urlInput) elements.urlInput.disabled = true;
+            if (elements.loadingSection) elements.loadingSection.classList.remove('hidden');
+            if (elements.previewSection) elements.previewSection.classList.add('hidden');
         } else {
-            elements.btnText.textContent = 'Download';
-            elements.btnLoader.classList.add('hidden');
-            elements.btnIcon.classList.remove('hidden');
-            elements.downloadBtn.disabled = false;
-            elements.urlInput.disabled = false;
-            elements.loadingSection.classList.add('hidden');
+            if (elements.btnText) elements.btnText.textContent = 'Download';
+            if (elements.btnLoader) elements.btnLoader.classList.add('hidden');
+            if (elements.btnIcon) elements.btnIcon.classList.remove('hidden');
+            if (elements.downloadBtn) elements.downloadBtn.disabled = false;
+            if (elements.urlInput) elements.urlInput.disabled = false;
+            if (elements.loadingSection) elements.loadingSection.classList.add('hidden');
         }
     }
 
@@ -118,48 +129,75 @@
     // PREVIEW RENDERING
     // ============================================
     function renderPreview(data) {
-        // Update profile section (use remote thumbnail only; local file paths won't load in browser)
+        // Update profile section
         const headerThumb = (typeof data.thumbnail === 'string' && /^https?:\/\//i.test(data.thumbnail)) ? data.thumbnail : '';
-        if (headerThumb) {
+
+        if (headerThumb && elements.profileImage) {
             elements.profileImage.src = headerThumb;
             elements.profileImage.classList.remove('hidden');
-            elements.profileInitial.classList.add('hidden');
+            if (elements.profileInitial) elements.profileInitial.classList.add('hidden');
         } else {
-            elements.profileInitial.textContent = (data.username || 'U').charAt(0).toUpperCase();
-            elements.profileInitial.classList.remove('hidden');
-            elements.profileImage.classList.add('hidden');
+            if (elements.profileInitial) {
+                elements.profileInitial.textContent = (data.username || 'U').charAt(0).toUpperCase();
+                elements.profileInitial.classList.remove('hidden');
+            }
+            if (elements.profileImage) elements.profileImage.classList.add('hidden');
         }
 
         // Update metadata
-        elements.username.textContent = '@' + (data.username || 'instagram_user');
-        elements.contentType.textContent = capitalizeFirst(data.type || 'Post');
-        elements.mediaCount.textContent = formatMediaCount(data.items?.length || 1);
-        elements.caption.textContent = data.caption || '';
+        if (elements.username) {
+            elements.username.textContent = '@' + (data.username || 'instagram_user');
+        }
+        if (elements.contentType) {
+            elements.contentType.textContent = capitalizeFirst(data.type || 'Post');
+        }
+        if (elements.mediaCount) {
+            elements.mediaCount.textContent = formatMediaCount(data.items?.length || 1);
+        }
+        if (elements.caption) {
+            elements.caption.textContent = data.caption || '';
+        }
 
-        // Render media grid
-        // For reels/videos: show only video items (no thumbnail-only image cards)
+        // Filter items based on type
         let items = Array.isArray(data.items) ? data.items : [];
         const pageType = (data.type || '').toLowerCase();
+
+        // For reels/videos, filter to show only video items
         if (pageType === 'reel' || pageType === 'video' || pageType === 'tv') {
-            items = items.filter(it => (it.type === 'video') || ((it.format || '').toLowerCase() === 'mp4') || ((it.format || '').toLowerCase() === 'webm'));
+            const videoItems = items.filter(it =>
+                (it.type === 'video') ||
+                ((it.format || '').toLowerCase() === 'mp4') ||
+                ((it.format || '').toLowerCase() === 'webm')
+            );
+            // Only use filtered list if we found videos
+            if (videoItems.length > 0) {
+                items = videoItems;
+            }
         }
+
         renderMediaGrid(items);
 
         // Update download all button
-        if (data.download_all_url) {
+        if (data.download_all_url && elements.downloadAllBtn) {
             elements.downloadAllBtn.href = data.download_all_url;
         }
 
         // Show preview section
-        elements.previewSection.classList.remove('hidden');
-        
+        if (elements.previewSection) {
+            elements.previewSection.classList.remove('hidden');
+        }
+
         // Scroll to preview
         setTimeout(() => {
-            elements.previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (elements.previewSection) {
+                elements.previewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }, 100);
     }
 
     function renderMediaGrid(items) {
+        if (!elements.mediaGrid) return;
+
         elements.mediaGrid.innerHTML = '';
 
         if (!items || items.length === 0) {
@@ -176,20 +214,19 @@
     function createMediaCard(item, index) {
         const card = document.createElement('div');
         card.className = 'relative group rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 fade-in';
-        
-        const isVideo = item.format === 'mp4' || item.format === 'webm' || item.type === 'video';
+
+        const isVideo = item.format === 'mp4' || item.format === 'webm' || item.format === 'mkv' || item.type === 'video';
         const isImage = !isVideo;
 
-        // Prefer Laravel-served thumbnail_url.
+        // Prefer Laravel-served thumbnail_url
         const safeThumb = (item.thumbnail_url && /^https?:\/\//i.test(item.thumbnail_url))
             ? item.thumbnail_url
             : (item.thumbnail && /^https?:\/\//i.test(item.thumbnail) ? item.thumbnail : '');
 
-        // For image media, the media itself should be displayed (download_url is an image).
+        // For image media, the download_url is the actual image
         const displayImageUrl = (isImage && item.download_url) ? item.download_url : safeThumb;
 
         const fallbackSvg = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500"%3E%3Crect fill="%23374151" width="400" height="500"/%3E%3Ctext x="50%25" y="50%25" fill="%239CA3AF" text-anchor="middle" dy=".3em" font-family="system-ui" font-size="14"%3EMedia ' + (index + 1) + '%3C/text%3E%3C/svg%3E';
-        const thumbnailUrl = safeThumb || fallbackSvg;
         const mediaUrl = item.download_url || '#';
 
         card.innerHTML = `
@@ -201,6 +238,7 @@
                         playsinline
                         controls
                         preload="metadata"
+                        poster="${escapeHtml(safeThumb || '')}"
                     ></video>
                 ` : `
                     <img 
@@ -208,6 +246,7 @@
                         alt="Media ${index + 1}" 
                         class="w-full h-full object-cover"
                         onerror="this.src='${fallbackSvg}'"
+                        loading="lazy"
                     >
                 `}
 
@@ -226,8 +265,7 @@
                 <a 
                     href="${escapeHtml(item.download_url || '#')}" 
                     class="w-full py-3 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition-colors flex items-center justify-center space-x-2 block text-center"
-                    target="_blank"
-                    rel="noopener"
+                    download
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -236,7 +274,7 @@
                 </a>
             </div>
         `;
-        
+
         return card;
     }
 
@@ -288,9 +326,9 @@
     // ============================================
     async function handleSubmit(event) {
         event.preventDefault();
-        
-        const url = elements.urlInput.value.trim();
-        
+
+        const url = elements.urlInput ? elements.urlInput.value.trim() : '';
+
         hideMessages();
 
         // Client-side validation
@@ -300,7 +338,7 @@
         }
 
         if (!isValidInstagramUrl(url)) {
-            showError('Please enter a valid Instagram URL (post, reel, video, or story)');
+            showError('Please enter a valid Instagram URL (post, reel, video, story, or carousel)');
             return;
         }
 
@@ -317,19 +355,24 @@
             }
         } catch (error) {
             console.error('Fetch error:', error);
-            
+
             // Handle specific error types
             const msg = (error.message || '').toLowerCase();
-            if (msg.includes('cookies_missing') || msg.includes('cookies file') || msg.includes('cookies not configured')) {
+
+            if (msg.includes('cookies_missing') || msg.includes('cookies file') || msg.includes('cookies not configured') || msg.includes('no instagram cookies')) {
                 showError('Instagram cookies not configured. Please contact administrator.');
             } else if (msg.includes('login_required') || msg.includes('login required')) {
-                showError('Login required. Cookies may be expired. Please refresh cookies.');
+                showError('Login required. Cookies may be expired. Please try again later.');
             } else if (msg.includes('private_content') || msg.includes('private')) {
                 showError('This content is from a private account and cannot be downloaded.');
-            } else if (msg.includes('rate_limited') || msg.includes('rate')) {
+            } else if (msg.includes('rate_limited') || msg.includes('rate') || msg.includes('too many')) {
                 showError('Rate limited by Instagram. Please try again in a few minutes.');
-            } else if (msg.includes('no_formats') || msg.includes('no video formats')) {
-                showError('No downloadable formats found for this URL. Try updating yt-dlp on the server.');
+            } else if (msg.includes('not_found') || msg.includes('not found') || msg.includes('removed')) {
+                showError('This post was not found or has been removed.');
+            } else if (msg.includes('no_formats') || msg.includes('no video formats') || msg.includes('no downloadable')) {
+                showError('No downloadable content found. The post may be restricted.');
+            } else if (msg.includes('all cookies failed') || msg.includes('cookies exhausted')) {
+                showError('All cookies have been exhausted. Please try again later or contact administrator.');
             } else {
                 showError(error.message || 'An unexpected error occurred. Please try again.');
             }
@@ -346,12 +389,12 @@
             button.addEventListener('click', () => {
                 const content = button.nextElementSibling;
                 const icon = button.querySelector('.faq-icon');
-                
+
                 // Close all other FAQs
                 document.querySelectorAll('.faq-content').forEach(c => {
                     if (c !== content) {
                         c.classList.add('hidden');
-                        const otherIcon = c.previousElementSibling.querySelector('.faq-icon');
+                        const otherIcon = c.previousElementSibling?.querySelector('.faq-icon');
                         if (otherIcon) {
                             otherIcon.style.transform = 'rotate(0deg)';
                         }
@@ -359,9 +402,11 @@
                 });
 
                 // Toggle current FAQ
-                content.classList.toggle('hidden');
-                if (icon) {
-                    icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                if (content) {
+                    content.classList.toggle('hidden');
+                    if (icon) {
+                        icon.style.transform = content.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                    }
                 }
             });
         });
@@ -371,19 +416,31 @@
     // INPUT HANDLERS
     // ============================================
     function initInputHandlers() {
+        if (!elements.urlInput) return;
+
         // Clear error on input
         elements.urlInput.addEventListener('input', () => {
             hideMessages();
         });
 
         // Handle paste event for quick validation feedback
-        elements.urlInput.addEventListener('paste', (e) => {
+        elements.urlInput.addEventListener('paste', () => {
             setTimeout(() => {
                 const url = elements.urlInput.value.trim();
                 if (url && !isValidInstagramUrl(url)) {
                     showError('This doesn\'t look like a valid Instagram URL');
                 }
             }, 100);
+        });
+
+        // Handle Enter key
+        elements.urlInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (elements.form) {
+                    elements.form.dispatchEvent(new Event('submit'));
+                }
+            }
         });
     }
 
@@ -392,7 +449,7 @@
     // ============================================
     function init() {
         if (!elements.form) {
-            console.error('Download form not found');
+            console.warn('Download form not found on this page');
             return;
         }
 
@@ -403,7 +460,7 @@
         initFaqAccordion();
         initInputHandlers();
 
-        console.log('Instagram Downloader initialized');
+        console.log('Instagram Downloader initialized - IGReelDownloader.net');
     }
 
     // Initialize when DOM is ready

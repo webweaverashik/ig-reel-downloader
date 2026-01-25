@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 """
 Instagram Downloader - Python Worker
-Phase 1: Cookie-based downloading using yt-dlp
+Phase 1: Cookie-based downloading using yt-dlp with multiple cookie support
 
 Usage:
-    python instagram_fetch.py <instagram_url> <download_path> <cookies_path> [yt_dlp_path]
+    python instagram_fetch.py <instagram_url> <download_path> <cookies_json> [yt_dlp_path]
+
+Arguments:
+    instagram_url  - The Instagram URL to download
+    download_path  - Directory to save downloaded files
+    cookies_json   - JSON array of cookie file paths to try sequentially
+    yt_dlp_path    - Optional path to yt-dlp binary (default: yt-dlp)
 
 Outputs JSON to stdout with:
-- type: reel | video | photo | carousel
+- type: reel | video | photo | carousel | story
 - username: Instagram username
 - caption: Post caption
 - thumbnail: Thumbnail URL
 - items: Array of downloaded files with paths and metadata
 
 Error handling:
-- Missing/expired cookies
-- Login required
+- Missing/expired cookies (tries next cookie)
+- Login required (tries next cookie)
 - Private content
 - Removed posts
 - Rate limiting
@@ -29,13 +35,20 @@ import re
 from pathlib import Path
 
 
-def log_error(message, error_type="unknown"):
+def log_error(message, error_type="unknown", cookies_tried=0):
     """Output error as JSON and exit."""
     print(json.dumps({
         "error": message,
-        "error_type": error_type
+        "error_type": error_type,
+        "cookies_tried": cookies_tried
     }))
     sys.exit(1)
+
+
+def log_debug(message):
+    """Log debug message to stderr (won't interfere with JSON output)."""
+    sys.stderr.write(f"[DEBUG] {message}\n")
+    sys.stderr.flush()
 
 
 def validate_url(url):
@@ -51,6 +64,29 @@ def validate_url(url):
         if re.match(pattern, url, re.IGNORECASE):
             return True
     return False
+
+
+def is_cookie_error(error_text):
+    """Check if error is related to cookies/authentication."""
+    error_lower = error_text.lower()
+    cookie_keywords = [
+        'login', 'authentication', 'cookie', 'cookies', 
+        'csrf', 'sessionid', 'checkpoint', 'consent', 
+        'authorization', 'logged in', 'sign in',
+        'rate limit', 'too many requests', '429',
+        'please wait', 'try again later'
+    ]
+    return any(keyword in error_lower for keyword in cookie_keywords)
+
+
+def is_permanent_error(error_text):
+    """Check if error is permanent and shouldn't retry with different cookie."""
+    error_lower = error_text.lower()
+    permanent_keywords = [
+        'private', 'not found', '404', 'removed', 'deleted',
+        'does not exist', 'unavailable', 'blocked'
+    ]
+    return any(keyword in error_lower for keyword in permanent_keywords)
 
 
 def get_content_type(url, info_dict):
@@ -80,6 +116,13 @@ def get_content_type(url, info_dict):
     if ext in ['jpg', 'jpeg', 'png', 'webp']:
         return 'photo'
     
+    # Default based on URL pattern
+    if '/p/' in url_lower:
+        # Could be photo or video post
+        if info_dict.get('ext') in ['jpg', 'jpeg', 'png', 'webp']:
+            return 'photo'
+        return 'post'
+    
     return 'post'
 
 
@@ -108,6 +151,7 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
         '--dump-json',
         '--no-download',
         '--no-warnings',
+        '--socket-timeout', '30',
         url
     ]
 
@@ -123,42 +167,9 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
             stderr_raw = (result.stderr or '')
             stdout_raw = (result.stdout or '')
             combined_raw = (stderr_raw + "\n" + stdout_raw).strip()
-            combined = combined_raw.lower()
-
-            if 'login' in combined or 'authentication' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Login required. Cookies may be expired. Details: {snippet}", "login_required"
-            if 'private' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"This content is from a private account. Details: {snippet}", "private_content"
-            if 'not found' in combined or '404' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"This post has been removed or doesn't exist. Details: {snippet}", "not_found"
-            if 'rate' in combined or 'too many' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Rate limited by Instagram. Please try again later. Details: {snippet}", "rate_limited"
-
-            # Not a cookie error: Instagram extractor sometimes fails to see video formats.
-            # This is usually fixed by updating yt-dlp.
-            if 'no video formats found' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"No downloadable video formats found for this URL. Try updating yt-dlp. Details: {snippet}", "no_formats"
-
-            # If yt-dlp crashed (traceback), surface as a worker error (not cookies)
-            if 'traceback' in combined or 'exception' in combined:
-                # Return more context for debugging (first ~4000 chars)
-                details = combined_raw.strip()
-                details = details[:4000] if len(details) > 4000 else details
-                return None, f"yt-dlp crashed while fetching metadata. Details: {details}", "ytdlp_crashed"
-
-            # Cookie-related errors vary; match broader keywords
-            cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
-            if any(k in combined for k in cookie_keywords):
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Cookie/auth error. Please check cookie configuration. Details: {snippet}", "cookies_error"
-
-            snippet = combined_raw.replace('\n', ' ')[:260]
-            return None, f"Failed to fetch content. Details: {snippet}", "fetch_error"
+            
+            # Return error info for decision making
+            return None, combined_raw, result.returncode
 
         # Parse JSON output (might be multiple lines for carousel)
         output_lines = result.stdout.strip().split('\n')
@@ -173,7 +184,7 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
                     continue
 
         if not entries:
-            return None, "No content found at this URL.", "no_content"
+            return None, "No content found at this URL.", -1
 
         # Return first entry as main info, with all entries for carousel
         main_info = entries[0].copy()
@@ -181,16 +192,17 @@ def fetch_metadata(url, cookies_path, ytdlp_bin='yt-dlp'):
             main_info['entries'] = entries
             main_info['_type'] = 'playlist'
 
-        return main_info, None, None
+        return main_info, None, 0
 
     except subprocess.TimeoutExpired:
-        return None, "Request timed out. Please try again.", "timeout"
+        return None, "Request timed out.", -2
     except FileNotFoundError:
-        return None, f"yt-dlp binary not found: {ytdlp_bin}", "ytdlp_missing"
+        return None, f"yt-dlp binary not found: {ytdlp_bin}", -3
     except Exception as e:
-        return None, f"Unexpected error: {str(e)}", "exception"
+        return None, f"Unexpected error: {str(e)}", -4
 
-def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', want_thumbnails=True):
+
+def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', content_type='post'):
     """Download media using yt-dlp."""
     # Ensure download path exists
     Path(download_path).mkdir(parents=True, exist_ok=True)
@@ -204,13 +216,16 @@ def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', want_th
         '--no-warnings',
         '--no-playlist-reverse',
         '-o', output_template,
-        '--merge-output-format', 'mp4',
+        '--socket-timeout', '30',
     ]
 
-    # Only write thumbnails for video/reel content.
-    # For image posts/carousels, thumbnails are the media itself and writing thumbnails causes confusion/broken previews.
-    if want_thumbnails:
+    # For videos/reels, merge to mp4 and optionally get thumbnails
+    if content_type in ['reel', 'video', 'tv', 'story']:
+        cmd += ['--merge-output-format', 'mp4']
         cmd += ['--write-thumbnail', '--convert-thumbnails', 'jpg']
+    
+    # For photos/carousels, just download as-is
+    # yt-dlp handles image posts differently
 
     cmd += [url]
 
@@ -226,176 +241,240 @@ def download_media(url, download_path, cookies_path, ytdlp_bin='yt-dlp', want_th
             stderr_raw = (result.stderr or '')
             stdout_raw = (result.stdout or '')
             combined_raw = (stderr_raw + "\n" + stdout_raw).strip()
-            combined = combined_raw.lower()
-
-            if 'login' in combined or 'authentication' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Login required. Cookies may be expired. Details: {snippet}", "login_required"
-            if 'private' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"This content is from a private account. Details: {snippet}", "private_content"
-            if 'not found' in combined or '404' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"This post has been removed or doesn't exist. Details: {snippet}", "not_found"
-            if 'rate' in combined or 'too many' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Rate limited by Instagram. Please try again later. Details: {snippet}", "rate_limited"
-
-            if 'no video formats found' in combined:
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"No downloadable video formats found for this URL. Try updating yt-dlp. Details: {snippet}", "no_formats"
-
-            if 'traceback' in combined or 'exception' in combined:
-                details = combined_raw.strip()
-                details = details[:4000] if len(details) > 4000 else details
-                return None, f"yt-dlp crashed during download. Details: {details}", "ytdlp_crashed"
-
-            cookie_keywords = ['cookie', 'cookies', 'csrf', 'sessionid', 'checkpoint', 'consent', 'authorization']
-            if any(k in combined for k in cookie_keywords):
-                snippet = combined_raw.replace('\n', ' ')[:260]
-                return None, f"Cookie/auth error during download. Details: {snippet}", "cookies_error"
-
-            # Check if files were downloaded despite error
+            
+            # Check if any files were downloaded despite error
             downloaded_files = list(Path(download_path).glob('*'))
-            media_files = [f for f in downloaded_files if f.suffix.lower() in ['.mp4', '.webm', '.jpg', '.jpeg', '.png', '.webp']]
-
-            if not media_files:
-                snippet = (result.stderr or result.stdout or '').strip().replace('\n', ' ')[:220]
-                return None, f"Download failed. Details: {snippet}", "download_error"
+            media_exts = {'.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp'}
+            media_files = [f for f in downloaded_files if f.suffix.lower() in media_exts and f.is_file()]
+            
+            if media_files:
+                # Some files downloaded, continue with what we have
+                return sorted(media_files), None, 0
+            
+            return None, combined_raw, result.returncode
 
         # Find downloaded files
         downloaded_files = list(Path(download_path).glob('*'))
 
-        # Separate actual media from thumbnails. yt-dlp can save thumbnails as .jpg.
-        # We only want downloadable media items here.
+        # Separate actual media from thumbnails
         media_exts = {'.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp'}
         image_exts = {'.jpg', '.jpeg', '.png', '.webp'}
 
         all_files = [f for f in downloaded_files if f.is_file()]
         video_files = [f for f in all_files if f.suffix.lower() in {'.mp4', '.webm', '.mkv'}]
+        image_files = [f for f in all_files if f.suffix.lower() in image_exts]
 
-        # If there is at least one video, treat images as thumbnails/sidecars and exclude them from media items
-        if video_files:
-            media_files = sorted(video_files)
+        # Determine what to return based on content type
+        if content_type in ['reel', 'video', 'tv', 'story']:
+            # For video content, videos are the media, images are thumbnails
+            if video_files:
+                media_files = sorted(video_files)
+            else:
+                # Fallback to images if no videos found
+                media_files = sorted(image_files)
         else:
-            # Pure image posts/carousels: keep images as media items
-            media_files = sorted([f for f in all_files if f.suffix.lower() in image_exts])
+            # For photo/carousel/post, include all media
+            # But exclude obvious thumbnails (small files with similar names to videos)
+            if video_files:
+                # If there are videos, treat images as thumbnails
+                media_files = sorted(video_files)
+            else:
+                # Pure image post
+                media_files = sorted(image_files)
 
         if not media_files:
-            return None, "No media files were downloaded.", "no_files"
+            return None, "No media files were downloaded.", -1
 
-        return media_files, None, None
+        return media_files, None, 0
 
     except subprocess.TimeoutExpired:
-        return None, "Download timed out. The file may be too large.", "timeout"
+        return None, "Download timed out. The file may be too large.", -2
     except Exception as e:
-        return None, f"Download error: {str(e)}", "exception"
+        return None, f"Download error: {str(e)}", -4
+
+
+def try_with_cookie(url, download_path, cookie_path, ytdlp_bin, cookie_index):
+    """Try to fetch and download with a specific cookie file."""
+    log_debug(f"Trying cookie #{cookie_index + 1}: {cookie_path}")
+    
+    # Verify cookie file exists and is not empty
+    if not os.path.isfile(cookie_path):
+        return None, f"Cookie file not found: {cookie_path}", "cookie_not_found", False
+    
+    if os.path.getsize(cookie_path) == 0:
+        return None, f"Cookie file is empty: {cookie_path}", "cookie_empty", False
+    
+    # Fetch metadata first
+    info_dict, error_msg, return_code = fetch_metadata(url, cookie_path, ytdlp_bin)
+    
+    if error_msg:
+        # Check if we should try next cookie or return permanent error
+        if is_permanent_error(error_msg):
+            return None, error_msg, "permanent_error", False
+        if is_cookie_error(error_msg):
+            return None, error_msg, "cookie_error", True  # Should try next cookie
+        # Unknown error, try next cookie
+        return None, error_msg, "unknown_error", True
+    
+    # Determine content type
+    content_type = get_content_type(url, info_dict)
+    log_debug(f"Detected content type: {content_type}")
+    
+    # Download media
+    media_files, error_msg, return_code = download_media(
+        url, download_path, cookie_path, ytdlp_bin, content_type
+    )
+    
+    if error_msg:
+        if is_permanent_error(error_msg):
+            return None, error_msg, "permanent_error", False
+        if is_cookie_error(error_msg):
+            return None, error_msg, "cookie_error", True
+        return None, error_msg, "download_error", True
+    
+    # Success!
+    return {
+        'info_dict': info_dict,
+        'media_files': media_files,
+        'content_type': content_type,
+        'cookie_used': cookie_path
+    }, None, None, False
+
 
 def main():
     # Parse arguments
-    if len(sys.argv) not in (4, 5):
-        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_path> [yt_dlp_path]", "invalid_args")
+    if len(sys.argv) < 4:
+        log_error("Usage: python instagram_fetch.py <url> <download_path> <cookies_json> [yt_dlp_path]", "invalid_args")
     
     url = sys.argv[1]
     download_path = sys.argv[2]
-    cookies_path = sys.argv[3]
-    ytdlp_bin = sys.argv[4] if len(sys.argv) == 5 and sys.argv[4] else 'yt-dlp'
+    cookies_json = sys.argv[3]
+    ytdlp_bin = sys.argv[4] if len(sys.argv) >= 5 and sys.argv[4] else 'yt-dlp'
     
     # Validate URL
     if not validate_url(url):
         log_error("Invalid Instagram URL format.", "invalid_url")
 
-    # Preflight: confirm yt-dlp binary is runnable (helps diagnose VPS-only crashes)
+    # Parse cookies list
+    try:
+        cookie_files = json.loads(cookies_json)
+        if not isinstance(cookie_files, list):
+            cookie_files = [cookie_files]
+    except json.JSONDecodeError:
+        # Assume it's a single cookie path
+        cookie_files = [cookies_json]
+    
+    if not cookie_files:
+        log_error("No cookie files provided.", "cookies_missing", 0)
+    
+    log_debug(f"Found {len(cookie_files)} cookie file(s) to try")
+
+    # Preflight: confirm yt-dlp binary is runnable
     try:
         ver = subprocess.run([ytdlp_bin, '--version'], capture_output=True, text=True, timeout=15)
         if ver.returncode != 0:
-            out = ((ver.stderr or '') + "\n" + (ver.stdout or '')).strip()
-            out = out[:800] if len(out) > 800 else out
+            out = ((ver.stderr or '') + "\n" + (ver.stdout or '')).strip()[:800]
             log_error(f"yt-dlp failed to run. Binary: {ytdlp_bin}. Details: {out}", "ytdlp_crashed")
+        log_debug(f"yt-dlp version: {ver.stdout.strip()}")
     except FileNotFoundError:
         log_error(f"yt-dlp binary not found: {ytdlp_bin}", "ytdlp_missing")
     except Exception as e:
         log_error(f"yt-dlp preflight check failed. Binary: {ytdlp_bin}. Error: {str(e)}", "ytdlp_crashed")
-    
-    # Check cookies file exists
-    if not os.path.isfile(cookies_path):
-        log_error("Cookies file not found. Please configure Instagram cookies.", "cookies_missing")
-    
-    # Check cookies file is not empty
-    if os.path.getsize(cookies_path) == 0:
-        log_error("Cookies file is empty. Please add valid Instagram cookies.", "cookies_empty")
-    
-    # Fetch metadata first
-    info_dict, error, error_type = fetch_metadata(url, cookies_path, ytdlp_bin=ytdlp_bin)
-    
-    if error:
-        log_error(error, error_type)
-    
-    # Download media
-    # Only generate thumbnails for reels/videos (not for image posts/carousels)
-    url_lower = url.lower()
-    want_thumbnails = ('/reel/' in url_lower) or ('/reels/' in url_lower) or ('/tv/' in url_lower)
-    media_files, error, error_type = download_media(url, download_path, cookies_path, ytdlp_bin=ytdlp_bin, want_thumbnails=want_thumbnails)
-    
-    if error:
-        log_error(error, error_type)
-    
-    # Determine content type
-    content_type = get_content_type(url, info_dict)
 
-    # If URL is a reel but we ended up downloading only images, it's usually a thumbnail-only extraction.
-    # Keep type as 'reel' but items will reflect actual downloads.
+    # Try each cookie file sequentially
+    last_error = None
+    last_error_type = None
+    cookies_tried = 0
     
-    # Extract metadata
-    username = info_dict.get('uploader', info_dict.get('uploader_id', 'instagram_user'))
-    caption = info_dict.get('description', info_dict.get('title', ''))
-    thumbnail = info_dict.get('thumbnail', '')
-    
-    # Build items array (ONLY downloadable media items)
-    items = []
-    for i, file_path in enumerate(media_files):
-        ext = file_path.suffix.lower().lstrip('.')
-        is_video = ext in ['mp4', 'webm', 'mkv']
+    for idx, cookie_path in enumerate(cookie_files):
+        cookies_tried += 1
+        
+        result, error_msg, error_type, should_retry = try_with_cookie(
+            url, download_path, cookie_path, ytdlp_bin, idx
+        )
+        
+        if result:
+            # Success! Build response
+            info_dict = result['info_dict']
+            media_files = result['media_files']
+            content_type = result['content_type']
+            
+            # Extract metadata
+            username = info_dict.get('uploader', info_dict.get('uploader_id', 'instagram_user'))
+            caption = info_dict.get('description', info_dict.get('title', ''))
+            thumbnail = info_dict.get('thumbnail', '')
+            
+            # Build items array
+            items = []
+            for i, file_path in enumerate(media_files):
+                ext = file_path.suffix.lower().lstrip('.')
+                is_video = ext in ['mp4', 'webm', 'mkv']
 
-        # Find a thumbnail image generated by yt-dlp for this URL/download session.
-        # Do NOT treat thumbnails as media items.
-        thumb_path = None
-        for thumb in Path(download_path).glob('*.jpg'):
-            # Heuristic: match by Instagram id prefix or shared stem prefix
-            if file_path.stem.split('_')[0] in thumb.stem:
-                thumb_path = str(thumb)
-                break
+                # Find thumbnail for this item
+                thumb_path = None
+                for thumb in Path(download_path).glob('*.jpg'):
+                    if file_path.stem.split('_')[0] in thumb.stem and thumb != file_path:
+                        thumb_path = str(thumb)
+                        break
 
-        item = {
-            "id": i + 1,
-            "type": "video" if is_video else "image",
-            "format": ext,
-            "quality": get_quality_label(info_dict) if is_video else "Original",
-            "path": str(file_path),
-            "filename": file_path.name,
-            # 'thumbnail' is a REMOTE URL (safe to show in browser)
-            "thumbnail": thumbnail,
-            # 'thumbnail_file' is a LOCAL path (Laravel will convert it to thumbnail_url)
-            "thumbnail_file": thumb_path or ""
-        }
-        items.append(item)
-    
-    # If it's a carousel with multiple items, update type
-    if len(items) > 1:
-        content_type = 'carousel'
-    
-    # Build response
-    response = {
-        "success": True,
-        "type": content_type,
-        "username": username,
-        "caption": caption[:500] if caption else "",  # Limit caption length
-        "thumbnail": thumbnail,
-        "items": items
-    }
-    
-    # Output JSON
-    print(json.dumps(response))
+                item = {
+                    "id": i + 1,
+                    "type": "video" if is_video else "image",
+                    "format": ext,
+                    "quality": get_quality_label(info_dict) if is_video else "Original",
+                    "path": str(file_path),
+                    "filename": file_path.name,
+                    "thumbnail": thumbnail,
+                    "thumbnail_file": thumb_path or ""
+                }
+                items.append(item)
+            
+            # Update content type if carousel
+            if len(items) > 1:
+                content_type = 'carousel'
+            
+            # Build response
+            response = {
+                "success": True,
+                "type": content_type,
+                "username": username,
+                "caption": caption[:500] if caption else "",
+                "thumbnail": thumbnail,
+                "items": items,
+                "cookies_tried": cookies_tried,
+                "cookie_used": os.path.basename(cookie_path)
+            }
+            
+            print(json.dumps(response))
+            sys.exit(0)
+        
+        # Store last error
+        last_error = error_msg
+        last_error_type = error_type
+        
+        # Check if we should stop trying
+        if not should_retry:
+            log_debug(f"Permanent error, stopping: {error_msg}")
+            break
+        
+        log_debug(f"Cookie #{idx + 1} failed, trying next...")
+
+    # All cookies failed
+    if last_error_type == "permanent_error":
+        # Determine specific error type
+        error_lower = last_error.lower()
+        if 'private' in error_lower:
+            log_error("This content is from a private account.", "private_content", cookies_tried)
+        elif 'not found' in error_lower or '404' in error_lower:
+            log_error("This post has been removed or doesn't exist.", "not_found", cookies_tried)
+        else:
+            log_error(last_error[:300], "permanent_error", cookies_tried)
+    else:
+        log_error(
+            f"All {cookies_tried} cookie(s) failed. Last error: {last_error[:200] if last_error else 'Unknown'}",
+            "all_cookies_failed",
+            cookies_tried
+        )
 
 
 if __name__ == "__main__":

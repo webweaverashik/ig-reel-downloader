@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InstagramDownloaderController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -9,27 +9,34 @@ use App\Http\Controllers\InstagramDownloaderController;
 |--------------------------------------------------------------------------
 |
 | Phase 1: Instagram Downloader Routes
+| All routes for different content types (reels, video, photo, story, carousel)
 |
 */
 
-// Instagram Downloader Routes
-Route::get('/', [InstagramDownloaderController::class, 'index'])
-    ->name('instagram.downloader');
+// Home - Redirect to Reels Downloader
+Route::get('/', function () {
+    return redirect()->route('instagram.reels');
+});
 
-Route::post('/instagram-downloader/fetch', [InstagramDownloaderController::class, 'fetch'])
-    ->name('instagram.fetch');
+// Instagram Downloader Pages
+Route::get('/instagram-reels-downloader', [InstagramDownloaderController::class, 'reels'])->name('instagram.reels');
+
+Route::get('/instagram-video-downloader', [InstagramDownloaderController::class, 'video'])->name('instagram.video');
+
+Route::get('/instagram-photo-downloader', [InstagramDownloaderController::class, 'photo'])->name('instagram.photo');
+
+Route::get('/instagram-story-downloader', [InstagramDownloaderController::class, 'story'])->name('instagram.story');
+
+Route::get('/instagram-carousel-downloader', [InstagramDownloaderController::class, 'carousel'])->name('instagram.carousel');
+
+// API Endpoints
+Route::post('/instagram-downloader/fetch', [InstagramDownloaderController::class, 'fetch'])->name('instagram.fetch');
 
 Route::get('/instagram-downloader/download/{folder}/{filename}', [InstagramDownloaderController::class, 'download'])
     ->name('instagram.download')
     ->where('filename', '.*');
 
-Route::get('/instagram-downloader/preview/{folder}/{filename}', [InstagramDownloaderController::class, 'preview'])
-    ->name('instagram.preview')
-    ->where('filename', '.*');
+Route::get('/instagram-downloader/download-all/{folder}', [InstagramDownloaderController::class, 'downloadAll'])->name('instagram.download.all');
 
-Route::get('/instagram-downloader/thumbnail/{folder}/{filename}', [InstagramDownloaderController::class, 'thumbnail'])
-    ->name('instagram.thumbnail')
-    ->where('filename', '.*');
-
-Route::get('/instagram-downloader/download-all/{folder}', [InstagramDownloaderController::class, 'downloadAll'])
-    ->name('instagram.download.all');
+// Cookie Status Check (for debugging)
+Route::get('/instagram-downloader/cookie-status', [InstagramDownloaderController::class, 'cookieStatus'])->name('instagram.cookie.status');
