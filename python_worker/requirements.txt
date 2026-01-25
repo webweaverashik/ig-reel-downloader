@@ -1,0 +1,8 @@
+# Python dependencies for Instagram Downloader
+# Install with: pip install -r requirements.txt
+
+# HTTP requests library (required for photo downloads)
+requests>=2.28.0
+
+# yt-dlp for video downloads (can also be installed via pip)
+# yt-dlp>=2024.1.0

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
 Test script for debugging Instagram fetch issues.
-Run this directly from the command line to diagnose problems.
+Tests both video and photo downloads.
 
 Usage:
     cd python_worker
     python test_fetch.py
-
-Or from project root:
-    python python_worker/test_fetch.py
 """
 
 import os
@@ -33,7 +30,14 @@ def check_environment():
     print(f"Current working directory: {os.getcwd()}")
     print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
     print(f"HOME: {os.environ.get('HOME', 'NOT SET')}")
-    print(f"PATH: {os.environ.get('PATH', 'NOT SET')[:200]}...")
+    
+    # Check if requests is installed
+    try:
+        import requests
+        print(f"requests library: {requests.__version__}")
+    except ImportError:
+        print("requests library: NOT INSTALLED")
+        print("  Install with: pip install requests")
 
 
 def find_ytdlp():
@@ -47,7 +51,6 @@ def find_ytdlp():
         shutil.which('yt-dlp'),
     ]
     
-    # Also check Windows paths
     if sys.platform == 'win32':
         candidates.extend([
             r'C:\yt-dlp\yt-dlp.exe',
@@ -61,14 +64,12 @@ def find_ytdlp():
         
         print(f"\nChecking: {candidate}")
         
-        # Check if file exists
         if os.path.isfile(candidate):
             print(f"  ✓ File exists")
         else:
             print(f"  ✗ File does not exist")
             continue
         
-        # Try running it
         try:
             result = subprocess.run(
                 [candidate, '--version'],
@@ -107,7 +108,6 @@ def check_cookies():
     valid_cookies = []
     for cf in cookie_files:
         print(f"\n  File: {cf.name}")
-        print(f"    Path: {cf}")
         print(f"    Exists: {cf.exists()}")
         print(f"    Readable: {os.access(cf, os.R_OK)}")
         
@@ -119,80 +119,178 @@ def check_cookies():
                 valid_cookies.append(str(cf))
                 print(f"    ✓ Valid")
             else:
-                print(f"    ✗ Too small (< 50 bytes)")
+                print(f"    ✗ Too small")
         except Exception as e:
             print(f"    ✗ Error: {e}")
     
     return valid_cookies
 
 
-def test_fetch(ytdlp_bin, cookie_path, url):
-    print_section(f"TESTING FETCH WITH: {os.path.basename(cookie_path)}")
+def test_video_download(ytdlp_bin, cookie_path, url):
+    """Test video/reel download."""
+    print_section(f"TESTING VIDEO DOWNLOAD")
     
     print(f"URL: {url}")
-    print(f"Cookie: {cookie_path}")
-    print(f"yt-dlp: {ytdlp_bin}")
+    print(f"Cookie: {os.path.basename(cookie_path)}")
+    
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    download_path = os.path.join(script_dir, 'test_download')
+    
+    # Clean up previous test
+    if os.path.exists(download_path):
+        shutil.rmtree(download_path)
+    os.makedirs(download_path)
     
     cmd = [
         ytdlp_bin,
         '--cookies', cookie_path,
-        '--dump-json',
-        '--no-download',
         '--no-warnings',
         '--no-check-certificates',
-        '--socket-timeout', '30',
+        '-o', os.path.join(download_path, '%(id)s.%(ext)s'),
+        '--merge-output-format', 'mp4',
         url
     ]
     
-    print(f"\nCommand: {' '.join(cmd[:5])}...")
+    print(f"\nExecuting yt-dlp...")
     
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=60
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         
-        print(f"\nReturn code: {result.returncode}")
+        print(f"Return code: {result.returncode}")
         
         if result.stdout:
-            print(f"\nSTDOUT ({len(result.stdout)} chars):")
-            print(result.stdout[:500])
-            if len(result.stdout) > 500:
-                print("...")
-        
+            print(f"STDOUT: {result.stdout[:300]}")
         if result.stderr:
-            print(f"\nSTDERR ({len(result.stderr)} chars):")
-            print(result.stderr[:500])
-            if len(result.stderr) > 500:
-                print("...")
+            print(f"STDERR: {result.stderr[:300]}")
         
-        if result.returncode == 0:
-            print("\n✓ SUCCESS - yt-dlp can fetch this content!")
+        files = list(Path(download_path).glob('*'))
+        print(f"\nDownloaded files: {len(files)}")
+        for f in files:
+            print(f"  - {f.name} ({f.stat().st_size} bytes)")
+        
+        if result.returncode == 0 and files:
+            print("\n✓ VIDEO DOWNLOAD SUCCESS")
             return True
         else:
-            print("\n✗ FAILED - yt-dlp returned error")
+            print("\n✗ VIDEO DOWNLOAD FAILED")
             return False
             
-    except subprocess.TimeoutExpired:
-        print("\n✗ TIMEOUT - Command took too long")
-        return False
     except Exception as e:
-        print(f"\n✗ EXCEPTION: {e}")
+        print(f"\n✗ Exception: {e}")
         return False
 
 
-def test_php_simulation(ytdlp_bin, cookies, url):
-    """Simulate how PHP calls the Python script"""
-    print_section("SIMULATING PHP CALL")
+def test_photo_download(cookie_path, url):
+    """Test photo download using requests."""
+    print_section(f"TESTING PHOTO DOWNLOAD")
+    
+    print(f"URL: {url}")
+    print(f"Cookie: {os.path.basename(cookie_path)}")
+    
+    try:
+        import requests
+    except ImportError:
+        print("✗ requests library not installed!")
+        print("Install with: pip install requests")
+        return False
+    
+    # Parse cookies from file
+    cookies = {}
+    try:
+        with open(cookie_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split('\t')
+                if len(parts) >= 7:
+                    domain, _, path, secure, expires, name, value = parts[:7]
+                    if 'instagram.com' in domain:
+                        cookies[name] = value
+        print(f"Parsed {len(cookies)} cookies")
+    except Exception as e:
+        print(f"Error parsing cookies: {e}")
+        return False
+    
+    # Fetch the page to find image URLs
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml',
+    }
+    
+    print(f"\nFetching page...")
+    
+    try:
+        session = requests.Session()
+        session.cookies.update(cookies)
+        response = session.get(url, headers=headers, timeout=30)
+        
+        print(f"Status: {response.status_code}")
+        print(f"Content length: {len(response.text)}")
+        
+        # Look for image URLs in the response
+        import re
+        
+        # Find display_url
+        pattern = r'"display_url"\s*:\s*"([^"]+)"'
+        matches = re.findall(pattern, response.text)
+        
+        image_urls = []
+        for match in matches:
+            decoded = match.replace('\\u0026', '&').replace('\\/', '/')
+            if 'cdninstagram.com' in decoded and decoded not in image_urls:
+                image_urls.append(decoded)
+        
+        print(f"Found {len(image_urls)} image URLs")
+        
+        if image_urls:
+            # Try to download first image
+            print(f"\nDownloading first image...")
+            img_response = session.get(image_urls[0], headers={
+                'User-Agent': headers['User-Agent'],
+                'Referer': 'https://www.instagram.com/',
+            }, timeout=30)
+            
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            download_path = os.path.join(script_dir, 'test_download')
+            os.makedirs(download_path, exist_ok=True)
+            
+            img_path = os.path.join(download_path, 'test_image.jpg')
+            with open(img_path, 'wb') as f:
+                f.write(img_response.content)
+            
+            size = os.path.getsize(img_path)
+            print(f"Downloaded: {img_path} ({size} bytes)")
+            
+            if size > 1000:
+                print("\n✓ PHOTO DOWNLOAD SUCCESS")
+                return True
+            else:
+                print("\n✗ Downloaded file too small")
+                return False
+        else:
+            print("\n✗ No image URLs found in page")
+            return False
+            
+    except Exception as e:
+        print(f"\n✗ Exception: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def test_full_script(ytdlp_bin, cookies, url, content_type='video'):
+    """Test the full instagram_fetch.py script."""
+    print_section(f"TESTING FULL SCRIPT ({content_type.upper()})")
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     python_script = os.path.join(script_dir, 'instagram_fetch.py')
     download_path = os.path.join(script_dir, 'test_download')
     
-    # Create download directory
-    os.makedirs(download_path, exist_ok=True)
+    # Clean up
+    if os.path.exists(download_path):
+        shutil.rmtree(download_path)
+    os.makedirs(download_path)
     
     cookies_json = json.dumps(cookies)
     
@@ -205,53 +303,55 @@ def test_php_simulation(ytdlp_bin, cookies, url):
         ytdlp_bin
     ]
     
-    print(f"Command: python instagram_fetch.py <url> <path> <cookies> <ytdlp>")
-    print(f"Python: {sys.executable}")
-    print(f"Script: {python_script}")
+    print(f"URL: {url}")
     print(f"Download path: {download_path}")
-    print(f"Cookies: {len(cookies)} file(s)")
     
     try:
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=120,
+            timeout=180,
             cwd=script_dir
         )
         
         print(f"\nReturn code: {result.returncode}")
         
-        if result.stdout:
-            print(f"\nSTDOUT:")
-            print(result.stdout)
-        
         if result.stderr:
-            print(f"\nSTDERR (debug messages):")
-            print(result.stderr[:1000])
+            print(f"\nDebug output:")
+            for line in result.stderr.strip().split('\n')[-10:]:
+                print(f"  {line}")
         
-        # Try to parse JSON output
-        for line in result.stdout.strip().split('\n'):
+        if result.stdout:
+            print(f"\nJSON output:")
             try:
-                data = json.loads(line)
+                data = json.loads(result.stdout.strip().split('\n')[-1])
+                print(json.dumps(data, indent=2)[:500])
+                
                 if data.get('success'):
-                    print("\n✓ SUCCESS!")
+                    print(f"\n✓ FULL SCRIPT SUCCESS")
+                    print(f"  Type: {data.get('type')}")
+                    print(f"  Items: {len(data.get('items', []))}")
                     return True
-                elif data.get('error'):
-                    print(f"\n✗ ERROR: {data.get('error')}")
-                    if data.get('debug'):
-                        print(f"Debug: {json.dumps(data.get('debug'), indent=2)}")
+                else:
+                    print(f"\n✗ Script returned error: {data.get('error')}")
                     return False
             except json.JSONDecodeError:
-                continue
+                print(result.stdout[:500])
         
-        return False
+        # Check downloaded files
+        files = list(Path(download_path).glob('*'))
+        print(f"\nDownloaded files: {len(files)}")
+        for f in files:
+            print(f"  - {f.name} ({f.stat().st_size} bytes)")
+        
+        return len(files) > 0
         
     except subprocess.TimeoutExpired:
         print("\n✗ TIMEOUT")
         return False
     except Exception as e:
-        print(f"\n✗ EXCEPTION: {e}")
+        print(f"\n✗ Exception: {e}")
         return False
 
 
@@ -260,55 +360,49 @@ def main():
     print(" INSTAGRAM DOWNLOADER DEBUG TOOL")
     print("=" * 60)
     
-    # Check environment
     check_environment()
-    
-    # Find yt-dlp
     ytdlp_bin = find_ytdlp()
+    
     if not ytdlp_bin:
-        print("\n✗ FATAL: Could not find a working yt-dlp binary!")
-        print("Please install yt-dlp: pip install yt-dlp")
+        print("\n✗ FATAL: Could not find yt-dlp!")
         return
     
-    print(f"\n✓ Using yt-dlp: {ytdlp_bin}")
-    
-    # Check cookies
     cookies = check_cookies()
     if not cookies:
-        print("\n✗ FATAL: No valid cookie files found!")
-        print("Please add cookie files to: python_worker/cookies/")
+        print("\n✗ FATAL: No valid cookies found!")
         return
     
-    print(f"\n✓ Found {len(cookies)} valid cookie(s)")
+    print("\n" + "=" * 60)
+    print(" TEST OPTIONS")
+    print("=" * 60)
+    print("\n1. Test video/reel download")
+    print("2. Test photo download")
+    print("3. Test both")
+    print("4. Custom URL test")
     
-    # Test URL
-    test_url = input("\nEnter an Instagram URL to test (or press Enter for default): ").strip()
-    if not test_url:
-        test_url = "https://www.instagram.com/reel/C5L5L5L5L5L/"
-        print(f"Using test URL: {test_url}")
+    choice = input("\nEnter choice (1-4) [3]: ").strip() or "3"
     
-    # Test direct yt-dlp fetch
-    for cookie in cookies:
-        success = test_fetch(ytdlp_bin, cookie, test_url)
-        if success:
-            break
+    video_url = "https://www.instagram.com/reel/DTqYuzMkvNO/"
+    photo_url = "https://www.instagram.com/p/DT4YMpcD0ZO/"
     
-    # Test PHP simulation
-    test_php_simulation(ytdlp_bin, cookies, test_url)
+    if choice == "1":
+        test_video_download(ytdlp_bin, cookies[0], video_url)
+        test_full_script(ytdlp_bin, cookies, video_url, 'video')
+    elif choice == "2":
+        test_photo_download(cookies[0], photo_url)
+        test_full_script(ytdlp_bin, cookies, photo_url, 'photo')
+    elif choice == "3":
+        print("\n--- Testing Video ---")
+        test_full_script(ytdlp_bin, cookies, video_url, 'video')
+        print("\n--- Testing Photo ---")
+        test_full_script(ytdlp_bin, cookies, photo_url, 'photo')
+    elif choice == "4":
+        custom_url = input("Enter Instagram URL: ").strip()
+        if custom_url:
+            test_full_script(ytdlp_bin, cookies, custom_url, 'custom')
     
-    print_section("SUMMARY")
-    print("""
-If yt-dlp works directly but fails through PHP:
-1. Check file permissions on cookie files (chmod 644)
-2. Check web server user can read the files
-3. Check PHP's open_basedir restrictions
-4. Check PHP's proc_open is allowed
-
-If both fail:
-1. Cookie may be expired - export fresh cookies
-2. Instagram may have changed their API
-3. Try updating yt-dlp: pip install -U yt-dlp
-""")
+    print_section("DONE")
+    print("\nCheck the test_download folder for downloaded files.")
 
 
 if __name__ == "__main__":

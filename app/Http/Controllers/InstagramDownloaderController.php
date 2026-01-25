@@ -304,6 +304,7 @@ class InstagramDownloaderController extends Controller
 
         $pythonVersion = null;
         $ytdlpVersion  = null;
+        $hasRequests   = false;
 
         try {
             exec($pythonPath . ' --version 2>&1', $pythonOutput, $pythonCode);
@@ -319,18 +320,28 @@ class InstagramDownloaderController extends Controller
             $ytdlpVersion = 'Exception: ' . $e->getMessage();
         }
 
+        // Check if requests library is installed
+        try {
+            exec($pythonPath . ' -c "import requests; print(requests.__version__)" 2>&1', $requestsOutput, $requestsCode);
+            $hasRequests     = $requestsCode === 0;
+            $requestsVersion = $requestsCode === 0 ? implode(' ', $requestsOutput) : 'Not installed';
+        } catch (\Exception $e) {
+            $requestsVersion = 'Check failed';
+        }
+
         return response()->json([
-            'success'        => true,
-            'total_cookies'  => count($cookies),
-            'python_path'    => $pythonPath,
-            'python_version' => $pythonVersion,
-            'ytdlp_path'     => $ytdlpPath,
-            'ytdlp_version'  => $ytdlpVersion,
-            'base_path'      => base_path(),
-            'cookies_dir'    => base_path('python_worker/cookies'),
-            'web_user'       => get_current_user(),
-            'process_user'   => posix_getpwuid(posix_geteuid())['name'] ?? 'unknown',
-            'cookies'        => $status,
+            'success'          => true,
+            'total_cookies'    => count($cookies),
+            'python_path'      => $pythonPath,
+            'python_version'   => $pythonVersion,
+            'ytdlp_path'       => $ytdlpPath,
+            'ytdlp_version'    => $ytdlpVersion,
+            'requests_library' => $requestsVersion,
+            'base_path'        => base_path(),
+            'cookies_dir'      => base_path('python_worker/cookies'),
+            'web_user'         => get_current_user(),
+            'process_user'     => function_exists('posix_geteuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'unknown') : php_uname('n'),
+            'cookies'          => $status,
         ]);
     }
 
