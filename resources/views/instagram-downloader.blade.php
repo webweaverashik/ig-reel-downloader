@@ -5,11 +5,17 @@
 
 @section('content')
     <!-- Hero Section -->
-    <section class="py-12 sm:py-20">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <section class="relative py-12 sm:py-20 hero-gradient overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-40 -right-40 w-80 h-80 bg-violet-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <!-- Badge -->
             <div
-                class="inline-flex items-center px-4 py-2 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-sm font-medium mb-6">
+                class="inline-flex items-center px-4 py-2 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-sm font-medium mb-6 slide-up">
                 <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd"
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -18,22 +24,27 @@
                 {{ $config['badge'] }}
             </div>
 
-            <!-- Title -->
-            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white mb-6">
+            <!-- Title (H1) -->
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 dark:text-white mb-4 slide-up"
+                style="animation-delay: 0.1s">
                 {{ $config['hero_title'] }}
-                <span
-                    class="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent block sm:inline">
-                    {{ $config['hero_highlight'] }}
-                </span>
             </h1>
 
-            <!-- Subtitle -->
-            <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-2xl mx-auto">
+            <!-- Subtitle (H2) -->
+            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold mb-6 slide-up" style="animation-delay: 0.2s">
+                <span class="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
+                    {{ $config['hero_highlight'] }}
+                </span>
+            </h2>
+
+            <!-- Description -->
+            <p class="text-lg text-gray-600 dark:text-gray-400 mb-10 max-w-2xl mx-auto slide-up"
+                style="animation-delay: 0.3s">
                 {{ $config['subtitle'] }}
             </p>
 
             <!-- URL Input Form -->
-            <div class="max-w-2xl mx-auto">
+            <div class="max-w-2xl mx-auto slide-up" style="animation-delay: 0.4s">
                 <form id="downloadForm" class="relative flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-1">
                         <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -44,7 +55,7 @@
                             </svg>
                         </div>
                         <input type="text" id="urlInput" name="url" placeholder="{{ $config['placeholder'] }}"
-                            class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-500/20 outline-none transition-all text-base"
+                            class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-500/20 outline-none transition-all text-base shadow-lg"
                             autocomplete="off">
                     </div>
                     <button type="submit" id="downloadBtn"
@@ -86,10 +97,12 @@
             </div>
 
             <!-- Supported Formats -->
-            <div class="flex flex-wrap justify-center gap-3 mt-8">
+            <div class="flex flex-wrap justify-center gap-3 mt-8 slide-up" style="animation-delay: 0.5s">
                 @foreach ($config['formats'] as $format)
                     <span
-                        class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium">{{ $format }}</span>
+                        class="px-3 py-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium shadow-sm border border-gray-100 dark:border-gray-700">
+                        {{ $format }}
+                    </span>
                 @endforeach
             </div>
         </div>
@@ -125,6 +138,18 @@
                 <div id="mediaGrid" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- Media items will be inserted here by JavaScript -->
                 </div>
+
+                <!-- Download All Button -->
+                <div id="downloadAllContainer" class="hidden p-6 pt-0">
+                    <a href="#" id="downloadAllBtn"
+                        class="w-full py-4 rounded-xl instagram-gradient text-white font-semibold flex items-center justify-center space-x-2 hover:opacity-90 transition-opacity">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        <span>Download All (ZIP)</span>
+                    </a>
+                </div>
             </div>
         </div>
     </section>
@@ -147,7 +172,7 @@
                 </div>
                 <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="aspect-[4/5] skeleton rounded-2xl"></div>
-                    <div class="aspect-[4/5] skeleton rounded-2xl"></div>
+                    <div class="aspect-[4/5] skeleton rounded-2xl hidden sm:block"></div>
                 </div>
             </div>
         </div>
@@ -157,15 +182,18 @@
     <section class="py-16 bg-white dark:bg-gray-900">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose IGReelDownloader?
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                    Why Use Our {{ ucfirst($pageType) }} Downloader?
                 </h2>
-                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">The fastest and most reliable Instagram
-                    downloader with premium features.</p>
+                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                    The fastest and most reliable Instagram {{ $pageType }} downloader with premium features.
+                </p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <!-- Feature 1 -->
-                <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                <div
+                    class="feature-card p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                     <div
                         class="w-12 h-12 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mb-4">
                         <svg class="w-6 h-6 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor"
@@ -175,12 +203,13 @@
                         </svg>
                     </div>
                     <h3 class="font-semibold text-gray-900 dark:text-white text-lg mb-2">Lightning Fast</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">Download any content in seconds with our optimized
-                        servers.</p>
+                    <p class="text-gray-600 dark:text-gray-400 text-sm">Download any {{ $pageType }} content in seconds
+                        with our optimized servers.</p>
                 </div>
 
                 <!-- Feature 2 -->
-                <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                <div
+                    class="feature-card p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                     <div
                         class="w-12 h-12 rounded-xl bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mb-4">
                         <svg class="w-6 h-6 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor"
@@ -196,7 +225,8 @@
                 </div>
 
                 <!-- Feature 3 -->
-                <div class="p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
+                <div
+                    class="feature-card p-6 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700">
                     <div
                         class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-4">
                         <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor"
@@ -218,9 +248,12 @@
     <section class="py-16">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">How It Works</h2>
-                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Download Instagram {{ ucfirst($pageType) }}
-                    in 3 simple steps.</p>
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                    How to Download Instagram {{ ucfirst($pageType) }}
+                </h2>
+                <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                    Download Instagram {{ ucfirst($pageType) }} in 3 simple steps.
+                </p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -260,12 +293,87 @@
         </div>
     </section>
 
-    <!-- FAQ Section -->
+    <!-- Other Downloaders -->
     <section class="py-16 bg-white dark:bg-gray-900">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h3 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+                    Try Our Other Downloaders
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Download any type of Instagram content easily.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                @if ($pageType !== 'reels')
+                    <a href="{{ route('instagram.reels') }}"
+                        class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <span class="text-lg">📹</span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Reels</span>
+                    </a>
+                @endif
+
+                @if ($pageType !== 'video')
+                    <a href="{{ route('instagram.video') }}"
+                        class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <span class="text-lg">🎬</span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Video</span>
+                    </a>
+                @endif
+
+                @if ($pageType !== 'photo')
+                    <a href="{{ route('instagram.photo') }}"
+                        class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <span class="text-lg">📷</span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Photo</span>
+                    </a>
+                @endif
+
+                @if ($pageType !== 'story')
+                    <a href="{{ route('instagram.story') }}"
+                        class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <span class="text-lg">⏰</span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Story</span>
+                    </a>
+                @endif
+
+                @if ($pageType !== 'carousel')
+                    <a href="{{ route('instagram.carousel') }}"
+                        class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                        <div
+                            class="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                            <span class="text-lg">🎠</span>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Carousel</span>
+                    </a>
+                @endif
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="py-16">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Frequently Asked Questions
+                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                    Frequently Asked Questions
                 </h2>
+                <p class="text-gray-600 dark:text-gray-400">
+                    Common questions about our {{ ucfirst($pageType) }} Downloader
+                </p>
             </div>
 
             <div class="space-y-4">

@@ -1,6 +1,6 @@
 /**
  * Instagram Downloader - Pure JavaScript
- * Phase 1: Core Downloader Functionality
+ * IGReelDownloader.net
  * 
  * Features:
  * - Instagram URL validation
@@ -18,7 +18,7 @@
     // CONFIGURATION
     // ============================================
     const CONFIG = {
-        fetchEndpoint: '/instagram-downloader/fetch',
+        fetchEndpoint: '/api/instagram/fetch',
         csrfToken: document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
         urlPatterns: [
             /^https?:\/\/(www\.)?instagram\.com\/p\/[\w-]+\/?/,
@@ -52,7 +52,8 @@
         contentType: document.getElementById('contentType'),
         mediaCount: document.getElementById('mediaCount'),
         caption: document.getElementById('caption'),
-        downloadAllBtn: document.getElementById('downloadAllBtn')
+        downloadAllBtn: document.getElementById('downloadAllBtn'),
+        downloadAllContainer: document.getElementById('downloadAllContainer')
     };
 
     // ============================================
@@ -156,6 +157,7 @@
         }
         if (elements.caption) {
             elements.caption.textContent = data.caption || '';
+            elements.caption.style.display = data.caption ? 'block' : 'none';
         }
 
         // Filter items based on type
@@ -169,7 +171,6 @@
                 ((it.format || '').toLowerCase() === 'mp4') ||
                 ((it.format || '').toLowerCase() === 'webm')
             );
-            // Only use filtered list if we found videos
             if (videoItems.length > 0) {
                 items = videoItems;
             }
@@ -177,9 +178,14 @@
 
         renderMediaGrid(items);
 
-        // Update download all button
-        if (data.download_all_url && elements.downloadAllBtn) {
+        // Show/hide download all button
+        if (items.length > 1 && data.download_all_url && elements.downloadAllBtn) {
             elements.downloadAllBtn.href = data.download_all_url;
+            if (elements.downloadAllContainer) {
+                elements.downloadAllContainer.classList.remove('hidden');
+            }
+        } else if (elements.downloadAllContainer) {
+            elements.downloadAllContainer.classList.add('hidden');
         }
 
         // Show preview section
@@ -263,6 +269,17 @@
                         ${escapeHtml(item.quality || (isVideo ? 'HD' : 'Original'))}
                     </span>
                 </div>
+
+                <!-- Play button for videos -->
+                ${isVideo ? `
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div class="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                            <svg class="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                ` : ''}
             </div>
             <div class="p-4">
                 <a 
@@ -318,10 +335,47 @@
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error || 'Failed to fetch content');
+            throw new Error(data.error || data.message || 'Failed to fetch content');
         }
 
         return data;
+    }
+
+    // ============================================
+    // ERROR MESSAGE MAPPING
+    // ============================================
+    function getReadableError(error) {
+        const msg = (error.message || error || '').toLowerCase();
+
+        if (msg.includes('cookies_missing') || msg.includes('cookies not configured') || msg.includes('no instagram cookies')) {
+            return 'Instagram cookies not configured. Please contact administrator.';
+        }
+        if (msg.includes('login_required') || msg.includes('login required') || msg.includes('session expired')) {
+            return 'Instagram session expired. Please try again later.';
+        }
+        if (msg.includes('private_content') || msg.includes('private account') || msg.includes('private')) {
+            return 'This content is from a private account and cannot be downloaded.';
+        }
+        if (msg.includes('rate_limited') || msg.includes('rate limit') || msg.includes('too many requests')) {
+            return 'Rate limited by Instagram. Please try again in a few minutes.';
+        }
+        if (msg.includes('not_found') || msg.includes('not found') || msg.includes('removed') || msg.includes('deleted')) {
+            return 'This post was not found or has been removed.';
+        }
+        if (msg.includes('no_formats') || msg.includes('no video formats') || msg.includes('no downloadable')) {
+            return 'No downloadable content found. The post may be restricted.';
+        }
+        if (msg.includes('all cookies failed') || msg.includes('cookies exhausted')) {
+            return 'Unable to download at this time. Please try again later.';
+        }
+        if (msg.includes('timeout') || msg.includes('timed out')) {
+            return 'Request timed out. Please try again.';
+        }
+        if (msg.includes('url') || msg.includes('invalid')) {
+            return 'Please enter a valid Instagram URL.';
+        }
+
+        return error.message || 'An unexpected error occurred. Please try again.';
     }
 
     // ============================================
@@ -351,34 +405,14 @@
             const data = await fetchInstagramContent(url);
 
             if (data.success) {
-                showSuccess('Content fetched successfully!');
+                showSuccess('Content fetched successfully! Click to download.');
                 renderPreview(data);
             } else {
-                showError(data.error || 'Failed to fetch content');
+                showError(getReadableError({ message: data.error }));
             }
         } catch (error) {
             console.error('Fetch error:', error);
-
-            // Handle specific error types
-            const msg = (error.message || '').toLowerCase();
-
-            if (msg.includes('cookies_missing') || msg.includes('cookies file') || msg.includes('cookies not configured') || msg.includes('no instagram cookies')) {
-                showError('Instagram cookies not configured. Please contact administrator.');
-            } else if (msg.includes('login_required') || msg.includes('login required')) {
-                showError('Login required. Cookies may be expired. Please try again later.');
-            } else if (msg.includes('private_content') || msg.includes('private')) {
-                showError('This content is from a private account and cannot be downloaded.');
-            } else if (msg.includes('rate_limited') || msg.includes('rate') || msg.includes('too many')) {
-                showError('Rate limited by Instagram. Please try again in a few minutes.');
-            } else if (msg.includes('not_found') || msg.includes('not found') || msg.includes('removed')) {
-                showError('This post was not found or has been removed.');
-            } else if (msg.includes('no_formats') || msg.includes('no video formats') || msg.includes('no downloadable')) {
-                showError('No downloadable content found. The post may be restricted.');
-            } else if (msg.includes('all cookies failed') || msg.includes('cookies exhausted')) {
-                showError('All cookies have been exhausted. Please try again later or contact administrator.');
-            } else {
-                showError(error.message || 'An unexpected error occurred. Please try again.');
-            }
+            showError(getReadableError(error));
         } finally {
             setLoading(false);
         }
@@ -432,6 +466,8 @@
                 const url = elements.urlInput.value.trim();
                 if (url && !isValidInstagramUrl(url)) {
                     showError('This doesn\'t look like a valid Instagram URL');
+                } else {
+                    hideMessages();
                 }
             }, 100);
         });

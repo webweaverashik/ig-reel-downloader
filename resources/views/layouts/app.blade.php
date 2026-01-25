@@ -5,16 +5,32 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Instagram Downloader - IGReelDownloader.net')</title>
-    <meta name="description" content="@yield('description', 'Download Instagram Reels, Videos, Photos, and Stories in HD quality. Free, fast, and no login required.')">
+    <title>@yield('title', 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net')</title>
+    <meta name="description" content="@yield('description', 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.')">
 
-    <!-- Tailwind CSS via CDN (Phase 1) -->
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="@yield('title', 'IG Reel Downloader - Best Instagram Downloader')">
+    <meta property="og:description" content="@yield('description', 'Download Instagram Reels, Videos, Photos in HD quality. Free & Fast.')">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:site_name" content="IGReelDownloader.net">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="@yield('title', 'IG Reel Downloader')">
+    <meta name="twitter:description" content="@yield('description', 'Download Instagram content easily.')">
+
+    <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml"
@@ -36,6 +52,11 @@
             background-clip: text;
         }
 
+        .hero-gradient {
+            background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(236, 72, 153, 0.1) 0%, transparent 50%);
+        }
+
         .pulse-glow {
             animation: pulse-glow 2s ease-in-out infinite;
         }
@@ -49,6 +70,22 @@
 
             50% {
                 box-shadow: 0 0 40px rgba(168, 85, 247, 0.6);
+            }
+        }
+
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-20px);
             }
         }
 
@@ -104,6 +141,22 @@
             }
         }
 
+        .slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .line-clamp-3 {
             display: -webkit-box;
             -webkit-line-clamp: 3;
@@ -141,6 +194,43 @@
             background-color: rgba(139, 92, 246, 0.1);
             color: #a855f7;
         }
+
+        /* Card hover effects */
+        .feature-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .feature-card:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
     </style>
 
     <!-- Dark Mode Script (runs before page renders to prevent flash) -->
@@ -154,7 +244,6 @@
             } else if (savedTheme === 'dark' || prefersDark) {
                 document.documentElement.classList.add('dark');
             } else {
-                // Default to dark
                 document.documentElement.classList.add('dark');
             }
         })();
@@ -168,19 +257,25 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
-                <a href="{{ route('instagram.reels') }}" class="flex items-center space-x-2">
-                    <div class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center">
+                <a href="{{ route('home') }}" class="flex items-center space-x-2 group">
+                    <div
+                        class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center transform group-hover:scale-105 transition-transform">
                         <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                             <path
                                 d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                         </svg>
                     </div>
-                    <span class="font-bold text-xl text-gray-900 dark:text-white hidden sm:block">IGReelDownloader<span
-                            class="text-violet-500">.net</span></span>
+                    <span class="font-bold text-xl text-gray-900 dark:text-white hidden sm:block">
+                        IGReelDownloader<span class="text-violet-500">.net</span>
+                    </span>
                 </a>
 
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex items-center space-x-1">
+                    <a href="{{ route('home') }}"
+                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'home' ? 'active' : '' }}">
+                        Home
+                    </a>
                     <a href="{{ route('instagram.reels') }}"
                         class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'reels' ? 'active' : '' }}">
                         Reels
@@ -209,14 +304,12 @@
                     <button id="themeToggle"
                         class="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         title="Toggle theme">
-                        <!-- Sun Icon (shown in dark mode) -->
                         <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                             </path>
                         </svg>
-                        <!-- Moon Icon (shown in light mode) -->
                         <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -252,6 +345,10 @@
                     </button>
                 </div>
                 <nav class="p-4 space-y-2">
+                    <a href="{{ route('home') }}"
+                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'home' ? 'active' : '' }}">
+                        🏠 Home
+                    </a>
                     <a href="{{ route('instagram.reels') }}"
                         class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'reels' ? 'active' : '' }}">
                         📹 Reels Downloader
@@ -298,9 +395,12 @@
                         <span class="font-bold text-xl text-gray-900 dark:text-white">IGReelDownloader<span
                                 class="text-violet-500">.net</span></span>
                     </div>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm max-w-md">
+                    <p class="text-gray-600 dark:text-gray-400 text-sm max-w-md mb-4">
                         The fastest and most reliable way to download Instagram Reels, Videos, Photos, Stories, and
-                        Carousel posts in HD quality.
+                        Carousel posts in HD quality. Free, fast, and no login required.
+                    </p>
+                    <p class="text-gray-500 dark:text-gray-500 text-xs">
+                        We respect intellectual property rights. Please download content for personal use only.
                     </p>
                 </div>
 
@@ -309,19 +409,19 @@
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Downloaders</h4>
                     <ul class="space-y-2">
                         <li><a href="{{ route('instagram.reels') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Reels
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Reels
                                 Downloader</a></li>
                         <li><a href="{{ route('instagram.video') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Video
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Video
                                 Downloader</a></li>
                         <li><a href="{{ route('instagram.photo') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Photo
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Photo
                                 Downloader</a></li>
                         <li><a href="{{ route('instagram.story') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Story
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Story
                                 Downloader</a></li>
                         <li><a href="{{ route('instagram.carousel') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Carousel
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Carousel
                                 Downloader</a></li>
                     </ul>
                 </div>
@@ -331,17 +431,17 @@
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Legal</h4>
                     <ul class="space-y-2">
                         <li><a href="#"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Privacy
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Privacy
                                 Policy</a></li>
                         <li><a href="#"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Terms
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Terms
                                 of Service</a></li>
                         <li><a href="#"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">Contact
-                                Us</a></li>
-                        <li><a href="#"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm">About</a>
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">DMCA</a>
                         </li>
+                        <li><a href="#"
+                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Contact
+                                Us</a></li>
                     </ul>
                 </div>
             </div>
@@ -360,12 +460,8 @@
         (function() {
             'use strict';
 
-            // ============================================
-            // THEME MANAGEMENT
-            // ============================================
             function toggleTheme() {
                 const isDark = document.documentElement.classList.contains('dark');
-
                 if (isDark) {
                     document.documentElement.classList.remove('dark');
                     localStorage.setItem('theme', 'light');
@@ -375,9 +471,6 @@
                 }
             }
 
-            // ============================================
-            // MOBILE MENU
-            // ============================================
             function openMobileMenu() {
                 document.getElementById('mobileMenu').classList.add('open');
                 document.body.style.overflow = 'hidden';
@@ -388,33 +481,21 @@
                 document.body.style.overflow = '';
             }
 
-            // ============================================
-            // INITIALIZATION
-            // ============================================
             function init() {
-                // Theme toggle
                 const themeToggle = document.getElementById('themeToggle');
                 if (themeToggle) {
                     themeToggle.addEventListener('click', toggleTheme);
                 }
 
-                // Mobile menu
                 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
                 const mobileMenuClose = document.getElementById('mobileMenuClose');
                 const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
 
-                if (mobileMenuBtn) {
-                    mobileMenuBtn.addEventListener('click', openMobileMenu);
-                }
-                if (mobileMenuClose) {
-                    mobileMenuClose.addEventListener('click', closeMobileMenu);
-                }
-                if (mobileMenuOverlay) {
-                    mobileMenuOverlay.addEventListener('click', closeMobileMenu);
-                }
+                if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
+                if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
+                if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
             }
 
-            // Initialize when DOM is ready
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', init);
             } else {
