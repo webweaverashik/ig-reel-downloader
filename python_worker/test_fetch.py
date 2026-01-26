@@ -130,9 +130,9 @@ def check_cookies():
     return valid_cookies
 
 
-def test_carousel_extraction(cookies, url):
-    """Test carousel image extraction directly."""
-    print_section("TESTING CAROUSEL EXTRACTION")
+def test_media_extraction(cookies, url):
+    """Test media (video/image) extraction directly."""
+    print_section("TESTING MEDIA EXTRACTION")
     
     print(f"URL: {url}")
     
@@ -141,7 +141,9 @@ def test_carousel_extraction(cookies, url):
             parse_netscape_cookies, 
             extract_post_images_from_page, 
             extract_shortcode,
-            find_carousel_media
+            find_carousel_media,
+            extract_video_url_from_page,
+            extract_post_info_from_html
         )
     except ImportError as e:
         print(f"✗ Could not import from instagram_fetch.py: {e}")
@@ -175,15 +177,38 @@ def test_carousel_extraction(cookies, url):
     
     print(f"Page HTML length: {len(html)}")
     
-    # Check for carousel indicators
+    # Check for media indicators
     has_sidecar = '"edge_sidecar_to_children"' in html
     has_carousel_media = '"carousel_media"' in html
     has_graph_sidecar = '"GraphSidecar"' in html
+    has_video_url = '"video_url"' in html
+    has_is_video = '"is_video":true' in html or '"is_video": true' in html
+    has_video_versions = '"video_versions"' in html
     
-    print(f"\nCarousel indicators in HTML:")
-    print(f"  edge_sidecar_to_children: {has_sidecar}")
-    print(f"  carousel_media: {has_carousel_media}")
-    print(f"  GraphSidecar: {has_graph_sidecar}")
+    print(f"\nMedia indicators in HTML:")
+    print(f"  Video indicators:")
+    print(f"    video_url: {has_video_url}")
+    print(f"    is_video:true: {has_is_video}")
+    print(f"    video_versions: {has_video_versions}")
+    print(f"  Carousel indicators:")
+    print(f"    edge_sidecar_to_children: {has_sidecar}")
+    print(f"    carousel_media: {has_carousel_media}")
+    print(f"    GraphSidecar: {has_graph_sidecar}")
+    
+    # Extract post info
+    print(f"\nPost info extraction:")
+    post_info = extract_post_info_from_html(html, shortcode)
+    print(f"  Username: {post_info.get('username', 'unknown')}")
+    print(f"  Caption: {(post_info.get('caption', '') or '')[:100]}...")
+    print(f"  Thumbnail: {(post_info.get('thumbnail', '') or '')[:60]}...")
+    
+    # Try video extraction if video indicators present
+    if has_video_url or has_is_video or has_video_versions:
+        print("\n  → Video content detected, extracting video URLs...")
+        video_urls = extract_video_url_from_page(html, shortcode)
+        print(f"  Found {len(video_urls)} video URL(s)")
+        for i, vid in enumerate(video_urls):
+            print(f"    {i+1}. {vid[:70]}...")
     
     # Try carousel extraction
     if has_sidecar or has_carousel_media or has_graph_sidecar:
@@ -192,11 +217,9 @@ def test_carousel_extraction(cookies, url):
         print(f"  Found {len(carousel_images)} carousel images")
         for i, img in enumerate(carousel_images):
             print(f"    {i+1}. {img[:70]}...")
-    else:
-        print("\n  → No carousel indicators found")
     
-    # Full extraction
-    print(f"\nFull extraction result:")
+    # Full image extraction
+    print(f"\nFull image extraction result:")
     post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
     
     image_urls = post_data.get('image_urls', [])
@@ -210,7 +233,7 @@ def test_carousel_extraction(cookies, url):
     for i, img in enumerate(image_urls):
         print(f"    {i+1}. {img[:70]}...")
     
-    return len(image_urls) > 0
+    return len(image_urls) > 0 or (has_video_url or has_is_video)
 
 
 def test_full_script(ytdlp_bin, cookies, url, expected_type='auto'):
@@ -343,7 +366,7 @@ def main():
     choice = input("\nEnter choice (1-6) [4]: ").strip() or "4"
     
     # Test URLs - use known working examples
-    video_url = "https://www.instagram.com/reel/DR94FUYDOYH/"
+    video_url = "https://www.instagram.com/reel/DTqYuzMkvNO/"
     single_photo_url = "https://www.instagram.com/p/DT4YMpcD0ZO/"  # Single image post
     carousel_url = "https://www.instagram.com/p/DT7mBohAds4/"  # Multi-image carousel
     
@@ -354,8 +377,8 @@ def main():
         test_full_script(ytdlp_bin, cookies, single_photo_url, 'photo')
     
     elif choice == "3":
-        print("\n--- Testing Carousel Extraction Debug ---")
-        test_carousel_extraction(cookies, carousel_url)
+        print("\n--- Testing Media Extraction Debug ---")
+        test_media_extraction(cookies, carousel_url)
         print("\n--- Testing Full Script with Carousel ---")
         test_full_script(ytdlp_bin, cookies, carousel_url, 'carousel')
     
@@ -385,10 +408,10 @@ def main():
             print(f"  {test_type}: {status}")
     
     elif choice == "5":
-        custom_url = input("Enter carousel URL [default test URL]: ").strip()
+        custom_url = input("Enter URL to analyze [default carousel URL]: ").strip()
         if not custom_url:
             custom_url = carousel_url
-        test_carousel_extraction(cookies, custom_url)
+        test_media_extraction(cookies, custom_url)
     
     elif choice == "6":
         custom_url = input("Enter Instagram URL: ").strip()
@@ -399,8 +422,8 @@ def main():
             else:
                 expected = 'auto'
             
-            print("\n--- Testing Extraction ---")
-            test_carousel_extraction(cookies, custom_url)
+            print("\n--- Testing Media Extraction ---")
+            test_media_extraction(cookies, custom_url)
             print("\n--- Testing Full Script ---")
             test_full_script(ytdlp_bin, cookies, custom_url, expected)
     

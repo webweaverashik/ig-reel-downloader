@@ -797,8 +797,110 @@ def extract_username_from_ytdlp(info_dict, url):
     return username
 
 
+def extract_video_url_from_page(html, shortcode):
+    """Extract video URL from Instagram page HTML."""
+    video_urls = []
+    
+    log_debug(f"Searching for video URL for shortcode: {shortcode}")
+    
+    # Method 1: Look for video_url in JSON
+    video_url_pattern = r'"video_url"\s*:\s*"([^"]+)"'
+    matches = re.findall(video_url_pattern, html)
+    
+    for match in matches:
+        decoded_url = match.replace('\\u0026', '&').replace('\\/', '/')
+        if decoded_url and 'cdninstagram.com' in decoded_url:
+            if decoded_url not in video_urls:
+                video_urls.append(decoded_url)
+                log_debug(f"Found video_url: {decoded_url[:60]}...")
+    
+    # Method 2: Look for contentUrl in video schema
+    content_url_pattern = r'"contentUrl"\s*:\s*"([^"]+)"'
+    matches = re.findall(content_url_pattern, html)
+    
+    for match in matches:
+        decoded_url = match.replace('\\u0026', '&').replace('\\/', '/')
+        if decoded_url and 'cdninstagram.com' in decoded_url and '.mp4' in decoded_url.lower():
+            if decoded_url not in video_urls:
+                video_urls.append(decoded_url)
+                log_debug(f"Found contentUrl: {decoded_url[:60]}...")
+    
+    # Method 3: Look for og:video meta tag
+    og_video_pattern = r'<meta\s+property=["\']og:video(?::url)?["\']\s+content=["\']([^"\']+)["\']'
+    og_match = re.search(og_video_pattern, html, re.I)
+    if og_match:
+        decoded_url = og_match.group(1).replace('&amp;', '&')
+        if decoded_url and decoded_url not in video_urls:
+            video_urls.append(decoded_url)
+            log_debug(f"Found og:video: {decoded_url[:60]}...")
+    
+    # Method 4: Search near shortcode for video_versions
+    if shortcode in html:
+        shortcode_pos = html.find(f'"{shortcode}"')
+        if shortcode_pos != -1:
+            window_start = max(0, shortcode_pos - 10000)
+            window_end = min(len(html), shortcode_pos + 10000)
+            window = html[window_start:window_end]
+            
+            video_versions_pattern = r'"video_versions"\s*:\s*\[(.*?)\]'
+            versions_match = re.search(video_versions_pattern, window, re.DOTALL)
+            if versions_match:
+                versions_content = versions_match.group(1)
+                url_pattern = r'"url"\s*:\s*"([^"]+)"'
+                urls = re.findall(url_pattern, versions_content)
+                if urls:
+                    # First one is usually highest quality
+                    decoded_url = urls[0].replace('\\u0026', '&').replace('\\/', '/')
+                    if decoded_url and decoded_url not in video_urls:
+                        video_urls.append(decoded_url)
+                        log_debug(f"Found video_versions URL: {decoded_url[:60]}...")
+    
+    return video_urls
+
+
+def download_media_with_requests(url, save_path, cookies_dict, is_video=False):
+    """Download media (image or video) using requests library."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.instagram.com/',
+        'Sec-Fetch-Dest': 'video' if is_video else 'image',
+        'Sec-Fetch-Mode': 'no-cors',
+        'Sec-Fetch-Site': 'cross-site',
+    }
+    
+    try:
+        if HAS_REQUESTS:
+            session = requests.Session()
+            session.cookies.update(cookies_dict)
+            response = session.get(url, headers=headers, timeout=60, allow_redirects=True, stream=True)
+            response.raise_for_status()
+            
+            with open(save_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return True
+        else:
+            # Fallback to urllib
+            req = urllib.request.Request(url, headers=headers)
+            
+            # Add cookies to request
+            cookie_header = '; '.join([f'{k}={v}' for k, v in cookies_dict.items()])
+            req.add_header('Cookie', cookie_header)
+            
+            with urllib.request.urlopen(req, timeout=60) as response:
+                with open(save_path, 'wb') as f:
+                    f.write(response.read())
+            return True
+    except Exception as e:
+        log_debug(f"Error downloading media: {e}")
+        return False
+
+
 def download_photo_content(url, download_path, cookies_path, info_dict=None):
-    """Download photo content from Instagram."""
+    """Download photo/video content from Instagram using direct HTTP."""
     Path(download_path).mkdir(parents=True, exist_ok=True)
     
     cookies_dict = parse_netscape_cookies(cookies_path)
@@ -807,51 +909,122 @@ def download_photo_content(url, download_path, cookies_path, info_dict=None):
     shortcode = extract_shortcode(url)
     log_debug(f"Extracted shortcode: {shortcode}")
     
-    # Extract post data from page
-    post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
-    image_urls = post_data.get('image_urls', [])
-    username = post_data.get('username', 'instagram_user')
-    caption = post_data.get('caption', '')
-    thumbnail = post_data.get('thumbnail', '')
-    is_carousel = post_data.get('is_carousel', False)
+    # Fetch the page HTML
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
     
-    if not image_urls:
-        return None, "Could not find any image URLs for this post.", None
+    try:
+        if HAS_REQUESTS:
+            session = requests.Session()
+            session.cookies.update(cookies_dict)
+            response = session.get(url, headers=headers, timeout=30)
+            html = response.text
+        else:
+            req = urllib.request.Request(url, headers=headers)
+            cookie_header = '; '.join([f'{k}={v}' for k, v in cookies_dict.items()])
+            req.add_header('Cookie', cookie_header)
+            with urllib.request.urlopen(req, timeout=30) as response:
+                html = response.read().decode('utf-8', errors='ignore')
+        
+        log_debug(f"Fetched page HTML, length: {len(html)}")
+    except Exception as e:
+        log_debug(f"Error fetching page: {e}")
+        return None, f"Failed to fetch Instagram page: {str(e)}", None
     
-    log_debug(f"Downloading {len(image_urls)} image(s), is_carousel={is_carousel}")
+    # Check if this is a reel/video by looking for video indicators
+    url_lower = url.lower()
+    is_reel = '/reel/' in url_lower or '/reels/' in url_lower
+    has_video_content = '"video_url"' in html or '"is_video":true' in html or '"video_versions"' in html
     
     downloaded_files = []
+    username = None
+    caption = ''
+    thumbnail = ''
+    is_carousel = False
     
-    for idx, img_url in enumerate(image_urls[:10]):  # Max 10 images (Instagram carousel limit)
-        ext = get_image_extension(img_url)
-        if len(image_urls) == 1:
-            filename = f"{shortcode}.{ext}"
-        else:
-            filename = f"{shortcode}_{idx + 1:02d}.{ext}"
-        save_path = os.path.join(download_path, filename)
+    # Extract post info
+    post_info = extract_post_info_from_html(html, shortcode)
+    username = post_info.get('username', 'instagram_user')
+    caption = post_info.get('caption', '')
+    thumbnail = post_info.get('thumbnail', '')
+    
+    # If it's a reel or has video content, try to download video first
+    if is_reel or has_video_content:
+        log_debug("Detected video content, trying to extract video URL...")
+        video_urls = extract_video_url_from_page(html, shortcode)
         
-        log_debug(f"Downloading image {idx + 1}: {img_url[:80]}...")
+        if video_urls:
+            log_debug(f"Found {len(video_urls)} video URL(s)")
+            # Download the first (usually best quality) video
+            video_url = video_urls[0]
+            filename = f"{shortcode}.mp4"
+            save_path = os.path.join(download_path, filename)
+            
+            log_debug(f"Downloading video: {video_url[:80]}...")
+            
+            if download_media_with_requests(video_url, save_path, cookies_dict, is_video=True):
+                if os.path.exists(save_path) and os.path.getsize(save_path) > 10000:
+                    downloaded_files.append(Path(save_path))
+                    log_debug(f"Successfully downloaded video: {filename} ({os.path.getsize(save_path)} bytes)")
+                else:
+                    log_debug(f"Video file too small or missing")
+                    if os.path.exists(save_path):
+                        os.remove(save_path)
+    
+    # If no video downloaded, try images
+    if not downloaded_files:
+        log_debug("No video downloaded, trying images...")
+        post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
+        image_urls = post_data.get('image_urls', [])
+        is_carousel = post_data.get('is_carousel', False)
         
-        if download_image_with_requests(img_url, save_path, cookies_dict):
-            # Verify file was downloaded and has content
-            if os.path.exists(save_path) and os.path.getsize(save_path) > 1000:
-                downloaded_files.append(Path(save_path))
-                log_debug(f"Successfully downloaded: {filename}")
-            else:
-                log_debug(f"Downloaded file too small or missing: {filename}")
-                if os.path.exists(save_path):
-                    os.remove(save_path)
-        else:
-            log_debug(f"Failed to download image {idx + 1}")
+        # Update metadata if we got better info
+        if post_data.get('username'):
+            username = post_data['username']
+        if post_data.get('caption'):
+            caption = post_data['caption']
+        if post_data.get('thumbnail'):
+            thumbnail = post_data['thumbnail']
+        
+        if image_urls:
+            log_debug(f"Found {len(image_urls)} image(s)")
+            
+            for idx, img_url in enumerate(image_urls[:10]):
+                ext = get_image_extension(img_url)
+                if len(image_urls) == 1:
+                    filename = f"{shortcode}.{ext}"
+                else:
+                    filename = f"{shortcode}_{idx + 1:02d}.{ext}"
+                save_path = os.path.join(download_path, filename)
+                
+                log_debug(f"Downloading image {idx + 1}: {img_url[:80]}...")
+                
+                if download_image_with_requests(img_url, save_path, cookies_dict):
+                    if os.path.exists(save_path) and os.path.getsize(save_path) > 1000:
+                        downloaded_files.append(Path(save_path))
+                        log_debug(f"Successfully downloaded: {filename}")
+                    else:
+                        log_debug(f"Downloaded file too small or missing: {filename}")
+                        if os.path.exists(save_path):
+                            os.remove(save_path)
+                else:
+                    log_debug(f"Failed to download image {idx + 1}")
     
     if not downloaded_files:
-        return None, "Failed to download any images.", None
+        return None, "Could not download any media. The content may be private or unavailable.", None
+    
+    # Determine if it's a video or image based on what we downloaded
+    has_video = any(f.suffix.lower() == '.mp4' for f in downloaded_files)
     
     return downloaded_files, None, {
         'username': username,
         'caption': caption,
-        'thumbnail': thumbnail or (image_urls[0] if image_urls else ''),
-        'is_carousel': is_carousel
+        'thumbnail': thumbnail,
+        'is_carousel': is_carousel and not has_video,
+        'is_video': has_video
     }
 
 
@@ -959,104 +1132,134 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
     except OSError as e:
         return None, f"Cannot read cookie file: {str(e)}", "cookie_unreadable", True
 
-    # First, try to fetch metadata
-    info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_cmd)
+    # Determine if this is likely a video or photo from URL
+    url_lower = url.lower()
+    is_likely_video = '/reel/' in url_lower or '/reels/' in url_lower or '/tv/' in url_lower
     
     is_photo_post = False
     is_carousel = False
     extra_info = None
+    info_dict = None
+    ytdlp_failed = False
+    ytdlp_error_msg = None
     
-    if error_msg:
-        log_debug(f"Metadata fetch error: {error_msg[:200]}")
+    # For reels/videos, try yt-dlp first
+    if is_likely_video:
+        log_debug("URL looks like video content, trying yt-dlp first...")
+        info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_cmd)
         
-        # Check if it's a yt-dlp execution error (should retry with different approach)
-        if is_ytdlp_execution_error(error_msg):
-            log_debug("Detected yt-dlp execution error, this is a system issue not content issue")
-            return None, error_msg, "ytdlp_error", True
-        
-        # Check if it's a "no video formats" error - means it's a photo post
-        if is_photo_only_error(error_msg):
-            log_debug("Detected photo post (no video formats), switching to photo download...")
-            is_photo_post = True
-            info_dict = None
-        elif is_permanent_content_error(error_msg):
-            return None, "This content is from a private account or is not available.", "private_content", False
-        elif is_not_found_error(error_msg):
-            return None, "This post was not found or has been removed.", "not_found", False
-        elif is_cookie_error(error_msg):
-            return None, error_msg, "cookie_error", True
-        else:
-            # Unknown error - try as photo before giving up
-            log_debug(f"Unknown error, trying as photo...")
-            is_photo_post = True
-            info_dict = None
+        if error_msg:
+            log_debug(f"yt-dlp metadata error: {error_msg[:300]}")
+            ytdlp_failed = True
+            ytdlp_error_msg = error_msg
+            
+            # Check for permanent errors that shouldn't be retried
+            if is_permanent_content_error(error_msg):
+                return None, "This content is from a private account or is not available.", "private_content", False
+            if is_not_found_error(error_msg):
+                return None, "This post was not found or has been removed.", "not_found", False
+    else:
+        # For photos/posts, skip yt-dlp and go directly to HTTP download
+        log_debug("URL looks like photo/post, using direct HTTP download...")
+        ytdlp_failed = True
     
     content_type = get_content_type(url, info_dict, is_photo_post, is_carousel)
-    log_debug(f"Content type: {content_type}, is_photo: {is_photo_post}")
+    log_debug(f"Initial content type: {content_type}, ytdlp_failed: {ytdlp_failed}")
     
-    # Download based on content type
-    if is_photo_post or content_type == 'photo':
-        media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
-        if extra_info:
-            is_carousel = extra_info.get('is_carousel', False)
-    else:
-        # Try video download first
+    # If yt-dlp succeeded, try video download
+    if not ytdlp_failed and info_dict:
+        log_debug("yt-dlp metadata succeeded, downloading video...")
         media_files, error_msg = download_video_content(url, download_path, cookie_path, ytdlp_cmd, content_type)
         
-        # If video download fails with "no video formats", try photo download
-        if error_msg and is_photo_only_error(error_msg):
-            log_debug("Video download failed, trying as photo...")
-            is_photo_post = True
-            media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
-            if extra_info:
-                is_carousel = extra_info.get('is_carousel', False)
-        elif error_msg and is_ytdlp_execution_error(error_msg):
-            log_debug("yt-dlp execution error during download, trying photo fallback...")
-            media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
-            if extra_info:
-                is_carousel = extra_info.get('is_carousel', False)
+        if error_msg:
+            log_debug(f"Video download error: {error_msg[:200]}")
+            ytdlp_failed = True
+            ytdlp_error_msg = error_msg
+        elif media_files:
+            # Success!
+            log_debug(f"Video download succeeded: {len(media_files)} files")
+        else:
+            ytdlp_failed = True
     
-    if error_msg:
-        return None, error_msg, "download_error", True
+    # If yt-dlp failed or no files, try direct HTTP download
+    if ytdlp_failed or not info_dict:
+        log_debug("Trying direct HTTP download...")
+        media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
+        
+        if extra_info:
+            is_carousel = extra_info.get('is_carousel', False)
+            is_photo_post = True
+        
+        if error_msg:
+            log_debug(f"Direct HTTP download also failed: {error_msg}")
+            # Return the original yt-dlp error if we have one, otherwise the HTTP error
+            final_error = ytdlp_error_msg if ytdlp_error_msg else error_msg
+            
+            # Classify the error
+            if is_permanent_content_error(final_error):
+                return None, "This content is from a private account or is not available.", "private_content", False
+            if is_not_found_error(final_error):
+                return None, "This post was not found or has been removed.", "not_found", False
+            if is_cookie_error(final_error):
+                return None, final_error, "cookie_error", True
+            
+            return None, final_error, "download_error", True
     
     if not media_files:
         return None, "No media files downloaded.", "no_media", True
     
-    # Update content type based on results
-    content_type = get_content_type(url, info_dict, is_photo_post, is_carousel)
+    # Determine content type based on what we downloaded
+    has_video = any(f.suffix.lower() in ['.mp4', '.webm', '.mkv'] for f in media_files)
     
-    # Build response
+    # Get metadata from extra_info (direct download) or info_dict (yt-dlp)
     username = None
     caption = ''
     thumbnail = ''
     
-    # Get username from yt-dlp info (with proper extraction)
-    if info_dict:
-        username = extract_username_from_ytdlp(info_dict, url)
-        caption = info_dict.get('description', info_dict.get('title', ''))
-        thumbnail = info_dict.get('thumbnail', '')
-    
-    # Override with extra_info from photo download if available (more accurate for photos)
     if extra_info:
-        if extra_info.get('username'):
-            username = extra_info['username']
-        if extra_info.get('caption'):
-            caption = extra_info['caption']
-        if extra_info.get('thumbnail'):
-            thumbnail = extra_info['thumbnail']
+        username = extra_info.get('username')
+        caption = extra_info.get('caption', '')
+        thumbnail = extra_info.get('thumbnail', '')
+        is_carousel = extra_info.get('is_carousel', False)
+        is_video_from_extra = extra_info.get('is_video', False)
+    
+    if info_dict:
+        if not username:
+            username = extract_username_from_ytdlp(info_dict, url)
+        if not caption:
+            caption = info_dict.get('description', info_dict.get('title', ''))
+        if not thumbnail:
+            thumbnail = info_dict.get('thumbnail', '')
     
     # Fallback username
     if not username:
         username = 'instagram_user'
     
+    # Determine content type
+    url_lower = url.lower()
+    if '/reel/' in url_lower or '/reels/' in url_lower:
+        content_type = 'reel'
+    elif '/stories/' in url_lower:
+        content_type = 'story'
+    elif '/tv/' in url_lower:
+        content_type = 'video'
+    elif has_video:
+        content_type = 'video'
+    elif len(media_files) > 1:
+        content_type = 'carousel'
+    elif is_carousel:
+        content_type = 'carousel'
+    else:
+        content_type = 'photo'
+    
     items = []
     for i, file_path in enumerate(media_files):
         ext = file_path.suffix.lower().lstrip('.')
-        is_video = ext in ['mp4', 'webm', 'mkv']
+        is_video_file = ext in ['mp4', 'webm', 'mkv']
         
         # Find thumbnail for videos
         thumb_path = None
-        if is_video:
+        if is_video_file:
             for thumb in Path(download_path).glob('*.jpg'):
                 base_name = file_path.stem.split('_')[0]
                 if base_name in thumb.stem and thumb != file_path:
@@ -1065,9 +1268,9 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
         
         item = {
             "id": i + 1,
-            "type": "video" if is_video else "image",
+            "type": "video" if is_video_file else "image",
             "format": ext,
-            "quality": get_quality_label(info_dict) if is_video else "Original",
+            "quality": "HD" if is_video_file else "Original",
             "path": str(file_path),
             "filename": file_path.name,
             "thumbnail": thumbnail,
@@ -1075,11 +1278,7 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
         }
         items.append(item)
     
-    # Update content type based on actual downloaded items
-    if len(items) > 1:
-        content_type = 'carousel'
-    elif is_photo_post and len(items) == 1 and not is_carousel:
-        content_type = 'photo'
+    log_debug(f"Download complete: {len(items)} item(s), type={content_type}, user={username}")
     
     return {
         'info_dict': info_dict,
