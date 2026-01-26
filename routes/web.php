@@ -39,18 +39,16 @@ Route::get('/api/instagram/quick-test', function () {
     clearstatcache();
     
     $python = env('PYTHON_PATH', '/usr/bin/python3');
-    $ytdlp = env('YTDLP_PATH', '/usr/local/bin/yt-dlp');
     $script = realpath(base_path('python_worker/instagram_fetch.py'));
+    $scriptDir = dirname($script);
     $cookiesDir = realpath(base_path('python_worker/cookies'));
     
     $results = [
         'timestamp' => now()->toIso8601String(),
         'paths' => [
             'python' => $python,
-            'ytdlp' => $ytdlp,
-            'ytdlp_is_dir' => is_dir($ytdlp),
-            'ytdlp_is_file' => is_file($ytdlp),
             'script' => $script,
+            'script_dir' => $scriptDir,
             'cookies_dir' => $cookiesDir,
         ],
         'tests' => [],
@@ -63,32 +61,16 @@ Route::get('/api/instagram/quick-test', function () {
         'output' => trim(shell_exec($cmd)),
     ];
     
-    // Test 2: yt-dlp as module (recommended approach for VPS)
-    $cmd = escapeshellarg($python) . " -m yt_dlp --version 2>&1";
-    $moduleOutput = trim(shell_exec($cmd));
-    $results['tests']['ytdlp_module'] = [
+    // Test 2: yt-dlp command (let Python find it)
+    $cmd = "cd " . escapeshellarg($scriptDir) . " && HOME=/tmp yt-dlp --version 2>&1";
+    $ytdlpOutput = trim(shell_exec($cmd));
+    $results['tests']['ytdlp'] = [
         'command' => $cmd,
-        'output' => $moduleOutput,
-        'works' => preg_match('/^\d{4}\.\d{2}\.\d{2}/', $moduleOutput) === 1,
+        'output' => $ytdlpOutput,
+        'works' => preg_match('/^\d{4}\.\d{2}\.\d{2}/', $ytdlpOutput) === 1,
     ];
     
-    // Test 3: yt-dlp binary (may fail if it's a directory)
-    if (!is_dir($ytdlp)) {
-        $cmd = escapeshellarg($ytdlp) . " --version 2>&1";
-        $binaryOutput = trim(shell_exec($cmd));
-        $results['tests']['ytdlp_binary'] = [
-            'command' => $cmd,
-            'output' => $binaryOutput,
-            'works' => preg_match('/^\d{4}\.\d{2}\.\d{2}/', $binaryOutput) === 1,
-        ];
-    } else {
-        $results['tests']['ytdlp_binary'] = [
-            'skipped' => true,
-            'reason' => 'Path is a directory, not a binary',
-        ];
-    }
-    
-    // Test 4: Cookie files
+    // Test 3: Cookie files
     $cookies = [];
     if ($cookiesDir && is_dir($cookiesDir)) {
         foreach (glob($cookiesDir . '/*.txt') as $file) {
@@ -103,7 +85,7 @@ Route::get('/api/instagram/quick-test', function () {
     }
     $results['tests']['cookies'] = $cookies;
     
-    // Test 5: Run the Python script with a test URL
+    // Test 4: Run the Python script with a test URL (exactly like terminal)
     $testUrl = "https://www.instagram.com/reel/DTqYuzMkvNO/";
     $testDownloadPath = storage_path('app/downloads/quick-test-' . time());
     @mkdir($testDownloadPath, 0755, true);
@@ -111,10 +93,10 @@ Route::get('/api/instagram/quick-test', function () {
     $cookieFiles = array_map(function($c) { return $c['path']; }, array_filter($cookies, function($c) { return $c['readable'] && $c['size'] > 50; }));
     $cookiesJson = json_encode(array_values($cookieFiles));
     
-    // Pass empty string for yt-dlp path - let Python figure it out (handles module vs binary)
+    // Build command exactly like terminal
     $cmd = sprintf(
-        'cd %s && HOME=/tmp %s %s %s %s %s "" 2>&1',
-        escapeshellarg(dirname($script)),
+        'cd %s && HOME=/tmp %s %s %s %s %s 2>&1',
+        escapeshellarg($scriptDir),
         escapeshellarg($python),
         escapeshellarg($script),
         escapeshellarg($testUrl),
