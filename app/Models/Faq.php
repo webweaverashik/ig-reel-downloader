@@ -36,13 +36,11 @@ class Faq extends Model
     }
 
     /**
-     * Scope for FAQs by page slug
+     * Scope for FAQs by page slug - ONLY use with valid slug, not pagination
      */
-    public function scopeForPage($query, string $slug)
+    public function scopeByPageSlug($query, string $slug)
     {
-        return $query->where('page_slug', $slug)->orWhereHas('page', function ($q) use ($slug) {
-            $q->where('slug', $slug);
-        });
+        return $query->where('page_slug', $slug);
     }
 
     /**

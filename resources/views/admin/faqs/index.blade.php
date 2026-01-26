@@ -19,14 +19,14 @@
 
     <!-- Filter -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-6">
-        <form method="GET" class="flex flex-wrap gap-4 items-end">
+        <form method="GET" action="{{ route('admin.faqs.index') }}" class="flex flex-wrap gap-4 items-end">
             <div class="flex-1 min-w-[200px]">
                 <label class="block text-sm font-medium mb-2">Filter by Page</label>
                 <select name="page_slug"
                     class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none">
                     <option value="">All Pages</option>
                     @foreach ($pages as $slug => $title)
-                        <option value="{{ $slug }}" {{ request('page_slug') === $slug ? 'selected' : '' }}>
+                        <option value="{{ $slug }}" {{ request()->input('page_slug') === $slug ? 'selected' : '' }}>
                             {{ $title }} ({{ $slug }})</option>
                     @endforeach
                 </select>
@@ -35,7 +35,7 @@
                 class="px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 Filter
             </button>
-            @if (request('page_slug'))
+            @if (request()->input('page_slug'))
                 <a href="{{ route('admin.faqs.index') }}" class="px-4 py-2 text-gray-500 hover:text-gray-700">Clear</a>
             @endif
         </form>
@@ -121,7 +121,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-2">
-                                    <a href="{{ route('admin.faqs.edit', $faq) }}"
+                                    <a href="{{ route('admin.faqs.edit', $faq->id) }}"
                                         class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400" title="Edit">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -129,7 +129,8 @@
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                     </a>
-                                    <form action="{{ route('admin.faqs.destroy', $faq) }}" method="POST" class="inline"
+                                    <form action="{{ route('admin.faqs.destroy', $faq->id) }}" method="POST"
+                                        class="inline"
                                         onsubmit="return confirm('Are you sure you want to delete this FAQ?')">
                                         @csrf
                                         @method('DELETE')
@@ -156,15 +157,15 @@
                                     </svg>
                                 </div>
                                 <p class="text-gray-500 dark:text-gray-400 mb-4">
-                                    @if (request('page_slug'))
-                                        No FAQs found for page "{{ request('page_slug') }}".
+                                    @if (request()->input('page_slug'))
+                                        No FAQs found for page "{{ request()->input('page_slug') }}".
                                     @else
                                         No FAQs found in the database. Run: <code
                                             class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">php artisan
                                             db:seed</code>
                                     @endif
                                 </p>
-                                <a href="{{ route('admin.faqs.create', ['page_slug' => request('page_slug')]) }}"
+                                <a href="{{ route('admin.faqs.create', ['page_slug' => request()->input('page_slug')]) }}"
                                     class="inline-flex items-center px-4 py-2 instagram-gradient text-white rounded-lg hover:opacity-90">
                                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -195,13 +196,13 @@
             @endphp
             @foreach ($pageSlugs as $slug)
                 @php
-                    $count = \App\Models\Faq::where('page_slug', $slug)->count();
+                    $count = \Illuminate\Support\Facades\DB::table('faqs')->where('page_slug', $slug)->count();
                 @endphp
                 <a href="{{ route('admin.faqs.index', ['page_slug' => $slug]) }}"
-                    class="px-3 py-2 rounded-lg {{ request('page_slug') === $slug ? 'instagram-gradient text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' }} transition-colors">
+                    class="px-3 py-2 rounded-lg {{ request()->input('page_slug') === $slug ? 'instagram-gradient text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700' }} transition-colors">
                     {{ ucfirst($slug) }}
                     <span
-                        class="ml-1 px-1.5 py-0.5 text-xs rounded-full {{ request('page_slug') === $slug ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-700' }}">{{ $count }}</span>
+                        class="ml-1 px-1.5 py-0.5 text-xs rounded-full {{ request()->input('page_slug') === $slug ? 'bg-white/20' : 'bg-gray-200 dark:bg-gray-700' }}">{{ $count }}</span>
                 </a>
             @endforeach
         </div>

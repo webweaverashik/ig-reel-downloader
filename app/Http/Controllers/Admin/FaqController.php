@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\Page;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FaqController extends Controller
 {
@@ -13,19 +14,18 @@ class FaqController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Faq::query();
+        // Get the page_slug filter - use input() to avoid any magic property issues
+        $pageSlug = $request->input('page_slug');
 
-        // Filter by page_slug if provided
-        if ($request->filled('page_slug')) {
-            $query->where('page_slug', $request->page_slug);
+        // Start with a fresh query builder using DB facade to avoid any model scopes
+        $query = DB::table('faqs');
+
+        // Apply filter only if page_slug is a valid non-empty string (not '1', '2', etc from pagination)
+        if (! empty($pageSlug) && ! is_numeric($pageSlug)) {
+            $query->where('page_slug', $pageSlug);
         }
 
-        // Clone query for counting before pagination
-        $totalFaqs     = Faq::count();
-        $activeFaqs    = Faq::where('is_active', true)->count();
-        $inactiveFaqs  = Faq::where('is_active', false)->count();
-        $pagesWithFaqs = Faq::distinct('page_slug')->count('page_slug');
-
+        // Get paginated results
         $faqs = $query->orderBy('page_slug')
             ->orderBy('order')
             ->orderBy('id')
@@ -46,11 +46,12 @@ class FaqController extends Controller
             ]);
         }
 
+        // Calculate stats using direct DB queries
         $stats = [
-            'total'    => $totalFaqs,
-            'active'   => $activeFaqs,
-            'inactive' => $inactiveFaqs,
-            'pages'    => $pagesWithFaqs,
+            'total'    => DB::table('faqs')->count(),
+            'active'   => DB::table('faqs')->where('is_active', true)->count(),
+            'inactive' => DB::table('faqs')->where('is_active', false)->count(),
+            'pages'    => DB::table('faqs')->distinct('page_slug')->count('page_slug'),
         ];
 
         return view('admin.faqs.index', compact('faqs', 'pages', 'stats'));
@@ -75,7 +76,7 @@ class FaqController extends Controller
             ]);
         }
 
-        $pageSlug = $request->get('page_slug', '');
+        $pageSlug = $request->input('page_slug', '');
 
         return view('admin.faqs.create', compact('pages', 'pageSlug'));
     }
@@ -180,7 +181,7 @@ class FaqController extends Controller
         ]);
 
         foreach ($request->orders as $item) {
-            Faq::where('id', $item['id'])->update(['order' => $item['order']]);
+            DB::table('faqs')->where('id', $item['id'])->update(['order' => $item['order']]);
         }
 
         return response()->json(['success' => true]);
