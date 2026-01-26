@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <title>@yield('title', 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net')</title>
     <meta name="description" content="@yield('description', 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.')">
 
@@ -25,6 +26,11 @@
 
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Tailwind v4 Dark Mode Configuration -->
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:where(.dark, .dark *));
+    </style>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,13 +229,149 @@
             background: #1f2937;
         }
 
+        html:not(.dark) ::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+
         ::-webkit-scrollbar-thumb {
             background: #4b5563;
             border-radius: 4px;
         }
 
+        html:not(.dark) ::-webkit-scrollbar-thumb {
+            background: #9ca3af;
+        }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #6b7280;
+        }
+
+        /* Theme transition */
+        html.theme-transition,
+        html.theme-transition *,
+        html.theme-transition *:before,
+        html.theme-transition *:after {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important;
+        }
+
+        /* Scroll to Top Button */
+        #scrollToTop {
+            position: fixed !important;
+            bottom: 1.5rem !important;
+            right: 1.5rem !important;
+            left: auto !important;
+        }
+
+        .scroll-top-float {
+            animation: scrollTopFloat 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.3s ease,
+                opacity 0.3s ease,
+                visibility 0.3s ease;
+        }
+
+        .scroll-top-float:hover {
+            animation: none;
+            transform: translateY(-12px) scale(1.1);
+            box-shadow: 0 20px 40px rgba(236, 72, 153, 0.4),
+                0 0 20px rgba(168, 85, 247, 0.3),
+                0 0 40px rgba(236, 72, 153, 0.2);
+            cursor: pointer;
+        }
+
+        @keyframes scrollTopFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .scroll-top-visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* Glow pulse on hover */
+        .scroll-top-float::before {
+            content: '';
+            position: absolute;
+            inset: -3px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .scroll-top-float:hover::before {
+            opacity: 1;
+            animation: glowPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes glowPulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 0.4;
+            }
+        }
+
+        /* Ripple effect on click */
+        .scroll-top-ripple {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scroll-top-ripple::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
+        }
+
+        .scroll-top-ripple:active::after {
+            width: 200%;
+            height: 200%;
+        }
+
+        /* Arrow icon animation on hover */
+        .scroll-top-float svg {
+            transition: transform 0.3s ease;
+        }
+
+        .scroll-top-float:hover svg {
+            transform: translateY(-2px);
+            animation: arrowBounce 0.6s ease-in-out infinite;
+        }
+
+        @keyframes arrowBounce {
+
+            0%,
+            100% {
+                transform: translateY(-2px);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
         }
     </style>
 
@@ -241,7 +383,9 @@
 
             if (savedTheme === 'light') {
                 document.documentElement.classList.remove('dark');
-            } else if (savedTheme === 'dark' || prefersDark) {
+            } else if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else if (prefersDark) {
                 document.documentElement.classList.add('dark');
             } else {
                 document.documentElement.classList.add('dark');
@@ -303,13 +447,15 @@
                     <!-- Dark/Light Mode Toggle -->
                     <button id="themeToggle"
                         class="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        title="Toggle theme">
+                        title="Toggle theme" aria-label="Toggle dark mode">
+                        <!-- Sun icon (shown in dark mode) -->
                         <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                             </path>
                         </svg>
+                        <!-- Moon icon (shown in light mode) -->
                         <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -369,6 +515,11 @@
                         class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'carousel' ? 'active' : '' }}">
                         🎠 Carousel Downloader
                     </a>
+                    <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+                    <a href="{{ route('contact') }}"
+                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'contact' ? 'active' : '' }}">
+                        📧 Contact Us
+                    </a>
                 </nav>
             </div>
         </div>
@@ -378,6 +529,16 @@
     <main>
         @yield('content')
     </main>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTop"
+        class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full instagram-gradient text-white shadow-lg shadow-pink-500/30 flex items-center justify-center opacity-0 invisible translate-y-4 focus:outline-none focus:ring-4 focus:ring-violet-500/30 scroll-top-float scroll-top-ripple"
+        aria-label="Scroll to top" title="Scroll to top">
+        <svg class="w-6 h-6 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18">
+            </path>
+        </svg>
+    </button>
 
     <!-- Footer -->
     <footer class="bg-gray-100 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 py-12">
@@ -430,16 +591,13 @@
                 <div>
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Legal</h4>
                     <ul class="space-y-2">
-                        <li><a href="#"
+                        <li><a href="{{ route('privacy-policy') }}"
                                 class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Privacy
                                 Policy</a></li>
-                        <li><a href="#"
+                        <li><a href="{{ route('terms') }}"
                                 class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Terms
                                 of Service</a></li>
-                        <li><a href="#"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">DMCA</a>
-                        </li>
-                        <li><a href="#"
+                        <li><a href="{{ route('contact') }}"
                                 class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Contact
                                 Us</a></li>
                     </ul>
@@ -461,7 +619,11 @@
             'use strict';
 
             function toggleTheme() {
+                // Add transition class for smooth color changes
+                document.documentElement.classList.add('theme-transition');
+
                 const isDark = document.documentElement.classList.contains('dark');
+
                 if (isDark) {
                     document.documentElement.classList.remove('dark');
                     localStorage.setItem('theme', 'light');
@@ -469,6 +631,11 @@
                     document.documentElement.classList.add('dark');
                     localStorage.setItem('theme', 'dark');
                 }
+
+                // Remove transition class after animation completes
+                setTimeout(() => {
+                    document.documentElement.classList.remove('theme-transition');
+                }, 300);
             }
 
             function openMobileMenu() {
@@ -482,11 +649,13 @@
             }
 
             function init() {
+                // Theme toggle
                 const themeToggle = document.getElementById('themeToggle');
                 if (themeToggle) {
                     themeToggle.addEventListener('click', toggleTheme);
                 }
 
+                // Mobile menu
                 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
                 const mobileMenuClose = document.getElementById('mobileMenuClose');
                 const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
@@ -494,6 +663,73 @@
                 if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
                 if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
                 if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+
+                // Close mobile menu on escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        closeMobileMenu();
+                    }
+                });
+
+                // Scroll to Top Button
+                initScrollToTop();
+            }
+
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTop');
+                if (!scrollToTopBtn) return;
+
+                let isScrolling = false;
+                let scrollTimeout;
+
+                // Show/hide button based on scroll position
+                function toggleScrollButton() {
+                    const scrollY = window.scrollY || window.pageYOffset;
+                    const showThreshold = 300;
+
+                    if (scrollY > showThreshold) {
+                        scrollToTopBtn.classList.add('scroll-top-visible');
+                    } else {
+                        scrollToTopBtn.classList.remove('scroll-top-visible');
+                    }
+                }
+
+                // Throttled scroll handler for better performance
+                function handleScroll() {
+                    if (!isScrolling) {
+                        window.requestAnimationFrame(function() {
+                            toggleScrollButton();
+                            isScrolling = false;
+                        });
+                        isScrolling = true;
+                    }
+                }
+
+                // Smooth scroll to top
+                function scrollToTop() {
+                    // Add ripple class
+                    scrollToTopBtn.classList.add('scroll-top-ripple');
+
+                    // Smooth scroll
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+
+                    // Remove ripple class after animation
+                    setTimeout(function() {
+                        scrollToTopBtn.classList.remove('scroll-top-ripple');
+                    }, 300);
+                }
+
+                // Event listeners
+                window.addEventListener('scroll', handleScroll, {
+                    passive: true
+                });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+
+                // Initial check
+                toggleScrollButton();
             }
 
             if (document.readyState === 'loading') {

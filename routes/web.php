@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\InstagramDownloaderController;
+use App\Http\Controllers\PageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,14 +23,20 @@ Route::get('/instagram-photo-downloader', [InstagramDownloaderController::class,
 Route::get('/instagram-story-downloader', [InstagramDownloaderController::class, 'story'])->name('instagram.story');
 Route::get('/instagram-carousel-downloader', [InstagramDownloaderController::class, 'carousel'])->name('instagram.carousel');
 
+// Static Pages
+Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
+Route::get('/terms-of-service', [PageController::class, 'terms'])->name('terms');
+Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+
 // API Endpoints
 Route::post('/api/instagram/fetch', [InstagramDownloaderController::class, 'fetch'])->name('instagram.fetch');
-
 Route::get('/api/instagram/download/{folder}/{filename}', [InstagramDownloaderController::class, 'download'])
     ->name('instagram.download')
     ->where('filename', '.*');
-
 Route::get('/api/instagram/download-all/{folder}', [InstagramDownloaderController::class, 'downloadAll'])->name('instagram.download.all');
+
+// Contact Form Submission
+Route::post('/api/contact', [PageController::class, 'submitContact'])->name('contact.submit');
 
 // Cookie Status Check (for debugging)
 Route::get('/api/instagram/cookie-status', [InstagramDownloaderController::class, 'cookieStatus'])->name('instagram.cookie.status');
@@ -119,14 +126,12 @@ Route::get('/api/instagram/quick-test', function () {
         if (empty($line)) {
             continue;
         }
-
         $decoded = json_decode($line, true);
         if ($decoded !== null && (isset($decoded['success']) || isset($decoded['error']))) {
             $jsonOutput = $decoded;
             break;
         }
     }
-
     $results['tests']['parsed_json'] = $jsonOutput;
 
     // Check if files were downloaded
@@ -225,7 +230,6 @@ Route::get('/api/instagram/check-permissions', function () {
         '/usr/bin/yt-dlp',
         '/home/ubuntu/.local/bin/yt-dlp',
     ];
-
     $results['ytdlp_binaries'] = [];
     foreach ($ytdlpPaths as $path) {
         if (file_exists($path)) {
