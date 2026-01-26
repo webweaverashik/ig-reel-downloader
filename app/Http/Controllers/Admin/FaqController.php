@@ -13,14 +13,32 @@ class FaqController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Faq::with('page');
+        $query = Faq::query();
 
+        // Filter by page_slug if provided
         if ($request->filled('page_slug')) {
             $query->where('page_slug', $request->page_slug);
         }
 
-        $faqs  = $query->orderBy('page_slug')->orderBy('order')->paginate(20);
+        $faqs = $query->orderBy('page_slug')
+            ->orderBy('order')
+            ->orderBy('id')
+            ->paginate(20);
+
+        // Get all pages for the dropdown
         $pages = Page::orderBy('slug')->pluck('title', 'slug');
+
+        // If no pages exist, provide default page slugs
+        if ($pages->isEmpty()) {
+            $pages = collect([
+                'home'     => 'Home',
+                'reels'    => 'Reels Downloader',
+                'video'    => 'Video Downloader',
+                'photo'    => 'Photo Downloader',
+                'story'    => 'Story Downloader',
+                'carousel' => 'Carousel Downloader',
+            ]);
+        }
 
         return view('admin.faqs.index', compact('faqs', 'pages'));
     }
@@ -28,10 +46,24 @@ class FaqController extends Controller
     /**
      * Show the form for creating a new FAQ
      */
-    public function create()
+    public function create(Request $request)
     {
-        $pages    = Page::orderBy('slug')->pluck('title', 'slug');
-        $pageSlug = request('page_slug');
+        $pages = Page::orderBy('slug')->pluck('title', 'slug');
+
+        // If no pages exist, provide default page slugs
+        if ($pages->isEmpty()) {
+            $pages = collect([
+                'home'     => 'Home',
+                'reels'    => 'Reels Downloader',
+                'video'    => 'Video Downloader',
+                'photo'    => 'Photo Downloader',
+                'story'    => 'Story Downloader',
+                'carousel' => 'Carousel Downloader',
+            ]);
+        }
+
+        $pageSlug = $request->get('page_slug', '');
+
         return view('admin.faqs.create', compact('pages', 'pageSlug'));
     }
 
@@ -44,11 +76,11 @@ class FaqController extends Controller
             'page_slug' => 'required|string|max:100',
             'question'  => 'required|string|max:500',
             'answer'    => 'required|string',
-            'order'     => 'integer|min:0',
-            'is_active' => 'boolean',
+            'order'     => 'nullable|integer|min:0',
+            'is_active' => 'nullable',
         ]);
 
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['is_active'] = $request->has('is_active') ? true : false;
         $validated['order']     = $validated['order'] ?? 0;
 
         // Link to page if exists
@@ -69,6 +101,19 @@ class FaqController extends Controller
     public function edit(Faq $faq)
     {
         $pages = Page::orderBy('slug')->pluck('title', 'slug');
+
+        // If no pages exist, provide default page slugs
+        if ($pages->isEmpty()) {
+            $pages = collect([
+                'home'     => 'Home',
+                'reels'    => 'Reels Downloader',
+                'video'    => 'Video Downloader',
+                'photo'    => 'Photo Downloader',
+                'story'    => 'Story Downloader',
+                'carousel' => 'Carousel Downloader',
+            ]);
+        }
+
         return view('admin.faqs.edit', compact('faq', 'pages'));
     }
 
@@ -81,11 +126,12 @@ class FaqController extends Controller
             'page_slug' => 'required|string|max:100',
             'question'  => 'required|string|max:500',
             'answer'    => 'required|string',
-            'order'     => 'integer|min:0',
-            'is_active' => 'boolean',
+            'order'     => 'nullable|integer|min:0',
+            'is_active' => 'nullable',
         ]);
 
-        $validated['is_active'] = $request->boolean('is_active');
+        $validated['is_active'] = $request->has('is_active') ? true : false;
+        $validated['order']     = $validated['order'] ?? 0;
 
         // Link to page if exists
         $page                 = Page::where('slug', $validated['page_slug'])->first();
@@ -110,7 +156,7 @@ class FaqController extends Controller
     }
 
     /**
-     * Reorder FAQs
+     * Reorder FAQs via AJAX
      */
     public function reorder(Request $request)
     {

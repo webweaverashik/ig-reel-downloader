@@ -15,6 +15,8 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('Creating super admin user...');
+
         // Create super admin user
         User::updateOrCreate(
             ['email' => 'admin@igreeldownloader.net'],
@@ -23,17 +25,19 @@ class AdminSeeder extends Seeder
                 'password'  => Hash::make('admin123456'),
                 'role'      => 'super_admin',
                 'is_active' => true,
-            ]
+            ],
         );
 
-        // Create site settings
+        $this->command->info('Creating site settings...');
         $this->createSettings();
 
-        // Create pages
+        $this->command->info('Creating pages...');
         $this->createPages();
 
-        // Create FAQs
+        $this->command->info('Creating FAQs...');
         $this->createFaqs();
+
+        $this->command->info('Admin seeder completed successfully!');
     }
 
     private function createSettings(): void
@@ -69,11 +73,10 @@ class AdminSeeder extends Seeder
         ];
 
         foreach ($settings as $setting) {
-            SiteSetting::updateOrCreate(
-                ['key' => $setting['key']],
-                $setting
-            );
+            SiteSetting::updateOrCreate(['key' => $setting['key']], $setting);
         }
+
+        $this->command->info('  - Created ' . count($settings) . ' settings');
     }
 
     private function createPages(): void
@@ -91,6 +94,7 @@ class AdminSeeder extends Seeder
                 'badge'            => '100% Free & Unlimited Downloads',
                 'placeholder'      => 'Paste Instagram URL here (Reels, Videos, Photos)...',
                 'formats'          => ['Reels', 'Videos', 'Photos', 'Stories', 'Carousel', 'HD Quality'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'reels',
@@ -104,6 +108,7 @@ class AdminSeeder extends Seeder
                 'badge'            => 'Free & Unlimited Reels Downloads',
                 'placeholder'      => 'Paste Instagram Reel URL here...',
                 'formats'          => ['Reels', 'HD Quality', 'MP4 Format', 'No Watermark', 'Fast Download'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'video',
@@ -117,6 +122,7 @@ class AdminSeeder extends Seeder
                 'badge'            => 'Free HD Video Downloads',
                 'placeholder'      => 'Paste Instagram Video URL here...',
                 'formats'          => ['IGTV', 'Video Posts', 'HD 1080p', 'MP4 Format', 'Original Quality'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'photo',
@@ -130,6 +136,7 @@ class AdminSeeder extends Seeder
                 'badge'            => 'Free HD Photo Downloads',
                 'placeholder'      => 'Paste Instagram Photo URL here...',
                 'formats'          => ['Photos', 'Profile Pictures', 'Full Resolution', 'JPG/PNG', 'Original Size'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'story',
@@ -143,6 +150,7 @@ class AdminSeeder extends Seeder
                 'badge'            => 'Anonymous Story Downloads',
                 'placeholder'      => 'Paste Instagram Story URL here...',
                 'formats'          => ['Stories', 'Highlights', 'Photos', 'Videos', 'Anonymous'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'carousel',
@@ -156,29 +164,31 @@ class AdminSeeder extends Seeder
                 'badge'            => 'Bulk Carousel Downloads',
                 'placeholder'      => 'Paste Instagram Carousel URL here...',
                 'formats'          => ['Multiple Photos', 'Multiple Videos', 'Bulk Download', 'ZIP Archive', 'HD Quality'],
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'privacy-policy',
                 'title'            => 'Privacy Policy',
                 'meta_title'       => 'Privacy Policy - IGReelDownloader.net',
                 'meta_description' => 'Read our Privacy Policy to understand how IGReelDownloader.net collects, uses, and protects your information.',
-                'content'          => '', // Will use blade template
+                'content'          => '',
+                'is_active'        => true,
             ],
             [
                 'slug'             => 'terms',
                 'title'            => 'Terms of Service',
                 'meta_title'       => 'Terms of Service - IGReelDownloader.net',
                 'meta_description' => 'Read our Terms of Service to understand the rules and guidelines for using IGReelDownloader.net.',
-                'content'          => '', // Will use blade template
+                'content'          => '',
+                'is_active'        => true,
             ],
         ];
 
         foreach ($pages as $page) {
-            Page::updateOrCreate(
-                ['slug' => $page['slug']],
-                $page
-            );
+            Page::updateOrCreate(['slug' => $page['slug']], $page);
         }
+
+        $this->command->info('  - Created ' . count($pages) . ' pages');
     }
 
     private function createFaqs(): void
@@ -235,16 +245,17 @@ class AdminSeeder extends Seeder
             ['page_slug' => 'carousel', 'question' => 'What format is the download?', 'answer' => 'Individual items download in their original format. "Download All" creates a ZIP archive.', 'order' => 6],
         ];
 
+        $createdCount = 0;
         foreach ($faqs as $faq) {
             // Get page_id if page exists
             $page             = Page::where('slug', $faq['page_slug'])->first();
             $faq['page_id']   = $page?->id;
             $faq['is_active'] = true;
 
-            Faq::updateOrCreate(
-                ['page_slug' => $faq['page_slug'], 'question' => $faq['question']],
-                $faq
-            );
+            Faq::updateOrCreate(['page_slug' => $faq['page_slug'], 'question' => $faq['question']], $faq);
+            $createdCount++;
         }
+
+        $this->command->info('  - Created ' . $createdCount . ' FAQs');
     }
 }
