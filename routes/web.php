@@ -61,8 +61,8 @@ Route::get('/api/instagram/quick-test', function () {
         'output' => trim(shell_exec($cmd)),
     ];
     
-    // Test 2: yt-dlp command (let Python find it)
-    $cmd = "cd " . escapeshellarg($scriptDir) . " && HOME=/tmp yt-dlp --version 2>&1";
+    // Test 2: yt-dlp command (with proper PATH)
+    $cmd = "cd " . escapeshellarg($scriptDir) . " && HOME=/tmp PATH=/usr/local/bin:/usr/bin:\$PATH yt-dlp --version 2>&1";
     $ytdlpOutput = trim(shell_exec($cmd));
     $results['tests']['ytdlp'] = [
         'command' => $cmd,
@@ -93,9 +93,9 @@ Route::get('/api/instagram/quick-test', function () {
     $cookieFiles = array_map(function($c) { return $c['path']; }, array_filter($cookies, function($c) { return $c['readable'] && $c['size'] > 50; }));
     $cookiesJson = json_encode(array_values($cookieFiles));
     
-    // Build command exactly like terminal
+    // Build command exactly like terminal - with PATH set
     $cmd = sprintf(
-        'cd %s && HOME=/tmp %s %s %s %s %s 2>&1',
+        'cd %s && HOME=/tmp PATH=/usr/local/bin:/usr/bin:$PATH %s %s %s %s %s 2>&1',
         escapeshellarg($scriptDir),
         escapeshellarg($python),
         escapeshellarg($script),

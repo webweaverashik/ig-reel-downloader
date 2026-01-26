@@ -84,10 +84,15 @@ def run_command(cmd, timeout=120):
     log_debug(f"Running command: {cmd[:200]}...")
     
     try:
-        # Set up environment - mimic terminal environment
+        # Set up environment - mimic terminal environment exactly
         env = os.environ.copy()
         env['HOME'] = '/tmp'
-        env['PATH'] = '/usr/local/bin:/usr/bin:/bin:' + env.get('PATH', '')
+        # Prepend common binary paths to ensure yt-dlp is found
+        env['PATH'] = '/usr/local/bin:/usr/bin:/bin:/home/ubuntu/.local/bin:' + env.get('PATH', '')
+        # Disable Python buffering for real-time output
+        env['PYTHONUNBUFFERED'] = '1'
+        
+        script_dir = os.path.dirname(os.path.abspath(__file__))
         
         result = subprocess.run(
             cmd,
@@ -96,7 +101,7 @@ def run_command(cmd, timeout=120):
             text=True,
             timeout=timeout,
             env=env,
-            cwd=os.path.dirname(os.path.abspath(__file__))
+            cwd=script_dir
         )
         
         return result.returncode, result.stdout, result.stderr
@@ -108,21 +113,38 @@ def run_command(cmd, timeout=120):
 
 def get_ytdlp_command():
     """Get the yt-dlp command that works."""
-    # Try different approaches
-    commands_to_try = [
-        'yt-dlp --version',
-        '/usr/local/bin/yt-dlp --version',
-        '/usr/bin/yt-dlp --version',
-        'python3 -m yt_dlp --version',
+    import shutil
+    
+    # First, try to find yt-dlp using which
+    ytdlp_path = shutil.which('yt-dlp')
+    if ytdlp_path:
+        code, stdout, stderr = run_command(f'"{ytdlp_path}" --version', timeout=10)
+        if code == 0 and stdout.strip():
+            log_debug(f"Found yt-dlp via which: {ytdlp_path} (version: {stdout.strip()})")
+            return ytdlp_path
+    
+    # Try common paths
+    common_paths = [
+        '/usr/local/bin/yt-dlp',
+        '/usr/bin/yt-dlp',
+        '/home/ubuntu/.local/bin/yt-dlp',
     ]
     
-    for cmd in commands_to_try:
-        code, stdout, stderr = run_command(cmd, timeout=10)
-        if code == 0 and stdout.strip():
-            log_debug(f"Found working yt-dlp: {cmd.replace(' --version', '')} (version: {stdout.strip()})")
-            return cmd.replace(' --version', '')
+    for path in common_paths:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            code, stdout, stderr = run_command(f'"{path}" --version', timeout=10)
+            if code == 0 and stdout.strip():
+                log_debug(f"Found yt-dlp at: {path} (version: {stdout.strip()})")
+                return path
     
-    return 'yt-dlp'  # Default fallback
+    # Try just 'yt-dlp' command
+    code, stdout, stderr = run_command('yt-dlp --version', timeout=10)
+    if code == 0 and stdout.strip():
+        log_debug(f"Found yt-dlp in PATH (version: {stdout.strip()})")
+        return 'yt-dlp'
+    
+    log_debug("Warning: Could not verify yt-dlp, using default")
+    return 'yt-dlp'
 
 
 def fetch_with_ytdlp(url, download_path, cookie_file):

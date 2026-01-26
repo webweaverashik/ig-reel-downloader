@@ -462,8 +462,9 @@ class InstagramDownloaderController extends Controller
             ]);
 
             // Build command exactly like terminal - simple and direct
+            // Mimics: cd python_worker && yt-dlp --cookies cookies/instagram.txt ...
             $cmd = sprintf(
-                'cd %s && HOME=/tmp %s %s %s %s %s 2>&1',
+                'cd %s && HOME=/tmp PATH=/usr/local/bin:/usr/bin:$PATH %s %s %s %s %s 2>&1',
                 escapeshellarg($scriptDir),
                 escapeshellarg($python),
                 escapeshellarg($pythonScript),
