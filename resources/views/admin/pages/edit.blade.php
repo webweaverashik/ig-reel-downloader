@@ -117,13 +117,18 @@
                         <span class="text-sm">Status</span>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" name="is_active" value="1" class="sr-only peer"
-                                {{ old('is_active', $page->is_active) ? 'checked' : '' }}>
+                                {{ old('is_active', $page->is_active) ? 'checked' : '' }}
+                                {{ $page->slug === 'home' ? 'disabled' : '' }}>
                             <div
                                 class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-300 dark:peer-focus:ring-violet-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-violet-600">
                             </div>
                             <span class="ml-2 text-sm">Active</span>
                         </label>
                     </div>
+                    @if ($page->slug === 'home')
+                        <input type="hidden" name="is_active" value="1">
+                        <p class="text-xs text-gray-500 mb-4 -mt-2">The home page cannot be deactivated.</p>
+                    @endif
 
                     <button type="submit"
                         class="w-full instagram-gradient text-white font-medium py-2 rounded-lg hover:opacity-90 transition-opacity">
