@@ -101,9 +101,9 @@
                 <!-- Page Content (WYSIWYG) -->
                 <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-6">
                     <h2 class="text-lg font-semibold mb-4">Page Content</h2>
-                    <textarea name="content" id="content" rows="15"
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none"
-                        placeholder="Page content (HTML supported for static pages like Privacy Policy)">{{ old('content', $page->content) }}</textarea>
+                    <input type="hidden" name="content" id="content" value="{{ old('content', $page->content) }}">
+                    <div id="quill-editor" class="bg-white dark:bg-gray-800 rounded-lg" style="min-height: 400px;">
+                        {!! old('content', $page->content) !!}</div>
                 </div>
             </div>
 
@@ -172,4 +172,99 @@
             </div>
         </div>
     </form>
+
+    @push('scripts')
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize Quill Editor
+                var quill = new Quill('#quill-editor', {
+                    theme: 'snow',
+                    placeholder: 'Write your page content here...',
+                    modules: {
+                        toolbar: [
+                            [{
+                                'header': [1, 2, 3, 4, 5, 6, false]
+                            }],
+                            [{
+                                'font': []
+                            }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{
+                                'color': []
+                            }, {
+                                'background': []
+                            }],
+                            [{
+                                'list': 'ordered'
+                            }, {
+                                'list': 'bullet'
+                            }],
+                            [{
+                                'indent': '-1'
+                            }, {
+                                'indent': '+1'
+                            }],
+                            [{
+                                'align': []
+                            }],
+                            ['blockquote', 'code-block'],
+                            ['link', 'image'],
+                            ['clean']
+                        ]
+                    }
+                });
+
+                // Sync Quill content to hidden input before form submission
+                var form = document.querySelector('form');
+                form.addEventListener('submit', function() {
+                    var content = document.getElementById('content');
+                    content.value = quill.root.innerHTML;
+                });
+            });
+        </script>
+        <style>
+            .ql-editor {
+                min-height: 350px;
+                font-size: 14px;
+            }
+
+            .dark .ql-toolbar {
+                background: #1f2937;
+                border-color: #374151 !important;
+            }
+
+            .dark .ql-container {
+                border-color: #374151 !important;
+            }
+
+            .dark .ql-editor {
+                color: #e5e7eb;
+            }
+
+            .dark .ql-stroke {
+                stroke: #9ca3af !important;
+            }
+
+            .dark .ql-fill {
+                fill: #9ca3af !important;
+            }
+
+            .dark .ql-picker-label {
+                color: #9ca3af !important;
+            }
+
+            .dark .ql-picker-options {
+                background: #1f2937 !important;
+                border-color: #374151 !important;
+            }
+
+            .dark .ql-picker-item {
+                color: #e5e7eb !important;
+            }
+
+            .dark .ql-picker-item:hover {
+                color: #a855f7 !important;
+            }
+        </style>
+    @endpush
 @endsection
