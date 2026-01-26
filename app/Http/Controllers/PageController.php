@@ -1,9 +1,11 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\ContactMessage;
+use App\Models\Page;
+use App\Models\SiteSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class PageController extends Controller
@@ -13,8 +15,11 @@ class PageController extends Controller
      */
     public function privacyPolicy()
     {
+        $page = Page::findBySlug('privacy-policy');
+
         return view('privacy-policy', [
             'pageType' => 'privacy-policy',
+            'page'     => $page,
         ]);
     }
 
@@ -23,8 +28,11 @@ class PageController extends Controller
      */
     public function terms()
     {
+        $page = Page::findBySlug('terms');
+
         return view('terms', [
             'pageType' => 'terms',
+            'page'     => $page,
         ]);
     }
 
@@ -34,7 +42,13 @@ class PageController extends Controller
     public function contact()
     {
         return view('contact', [
-            'pageType' => 'contact',
+            'pageType'            => 'contact',
+            'contactEmail'        => SiteSetting::get('contact_email', 'support@igreeldownloader.net'),
+            'dmcaEmail'           => SiteSetting::get('dmca_email', 'dmca@igreeldownloader.net'),
+            'privacyEmail'        => SiteSetting::get('privacy_email', 'privacy@igreeldownloader.net'),
+            'responseTimeGeneral' => SiteSetting::get('response_time_general', '24-48 hours'),
+            'responseTimeSupport' => SiteSetting::get('response_time_support', '1-3 days'),
+            'responseTimeDmca'    => SiteSetting::get('response_time_dmca', '3-5 days'),
         ]);
     }
 
@@ -73,49 +87,24 @@ class PageController extends Controller
 
             $validated = $validator->validated();
 
-            // Get subject label
-            $subjectLabels = [
-                'general'     => 'General Inquiry',
-                'support'     => 'Technical Support',
-                'bug'         => 'Bug Report',
-                'feature'     => 'Feature Request',
-                'feedback'    => 'Feedback',
-                'partnership' => 'Partnership/Business',
-                'dmca'        => 'DMCA/Copyright',
-                'privacy'     => 'Privacy Concern',
-                'other'       => 'Other',
-            ];
-
-            $subjectLabel = $subjectLabels[$validated['subject']] ?? $validated['subject'];
-
-            // Log the contact form submission
-            Log::info('Contact form submission', [
-                'name'           => $validated['name'],
-                'email'          => $validated['email'],
-                'subject'        => $subjectLabel,
-                'url'            => $validated['url'] ?? null,
-                'message_length' => strlen($validated['message']),
-                'ip'             => $request->ip(),
-                'user_agent'     => $request->userAgent(),
+            // Store in database
+            $contactMessage = ContactMessage::create([
+                'name'       => $validated['name'],
+                'email'      => $validated['email'],
+                'subject'    => $validated['subject'],
+                'url'        => $validated['url'] ?? null,
+                'message'    => $validated['message'],
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'status'     => 'new',
             ]);
 
-            // Store the contact message (you can implement database storage here)
-            $contactData = [
-                'name'         => $validated['name'],
-                'email'        => $validated['email'],
-                'subject'      => $subjectLabel,
-                'url'          => $validated['url'] ?? null,
-                'message'      => $validated['message'],
-                'ip'           => $request->ip(),
-                'user_agent'   => $request->userAgent(),
-                'submitted_at' => now()->toIso8601String(),
-            ];
-
-            // Option 1: Store in a JSON file (simple approach)
-            $this->storeContactMessage($contactData);
-
-            // Option 2: Send email notification (uncomment if mail is configured)
-            // $this->sendContactNotification($contactData);
+            Log::info('Contact form submission saved', [
+                'id'      => $contactMessage->id,
+                'name'    => $validated['name'],
+                'email'   => $validated['email'],
+                'subject' => $validated['subject'],
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -133,48 +122,5 @@ class PageController extends Controller
                 'message' => 'An error occurred while sending your message. Please try again or email us directly.',
             ], 500);
         }
-    }
-
-    /**
-     * Store contact message to a JSON file
-     */
-    private function storeContactMessage(array $data): void
-    {
-        $storagePath = storage_path('app/contacts');
-
-        // Create directory if it doesn't exist
-        if (! file_exists($storagePath)) {
-            mkdir($storagePath, 0755, true);
-        }
-
-        $filename = date('Y-m-d_H-i-s') . '_' . uniqid() . '.json';
-        $filepath = $storagePath . '/' . $filename;
-
-        file_put_contents($filepath, json_encode($data, JSON_PRETTY_PRINT));
-    }
-
-    /**
-     * Send email notification for contact form
-     * Uncomment and configure if you have mail settings
-     */
-    private function sendContactNotification(array $data): void
-    {
-        // Example using Laravel Mail
-        // Mail::raw(
-        //     "New contact form submission:\n\n" .
-        //     "Name: {$data['name']}\n" .
-        //     "Email: {$data['email']}\n" .
-        //     "Subject: {$data['subject']}\n" .
-        //     "URL: " . ($data['url'] ?? 'N/A') . "\n\n" .
-        //     "Message:\n{$data['message']}\n\n" .
-        //     "---\n" .
-        //     "IP: {$data['ip']}\n" .
-        //     "Submitted: {$data['submitted_at']}",
-        //     function ($message) use ($data) {
-        //         $message->to('support@igreeldownloader.net')
-        //             ->subject('[IGReelDownloader] ' . $data['subject'])
-        //             ->replyTo($data['email'], $data['name']);
-        //     }
-        // );
     }
 }
