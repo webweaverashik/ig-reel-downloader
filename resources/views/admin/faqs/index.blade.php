@@ -67,7 +67,7 @@
                 <thead class="bg-gray-50 dark:bg-gray-800">
                     <tr>
                         <th
-                            class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">
+                            class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">
                             Order</th>
                         <th
                             class="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -83,12 +83,23 @@
                             Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                <tbody id="faqTableBody" class="divide-y divide-gray-200 dark:divide-gray-800">
                     @if ($faqs->count() > 0)
                         @foreach ($faqs as $faq)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <td class="px-6 py-4 text-center">
-                                    <span class="text-gray-500 font-mono">{{ $faq->order }}</span>
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                data-id="{{ $faq->id }}">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="drag-handle cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            title="Drag to reorder">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                                            </svg>
+                                        </div>
+                                        <span
+                                            class="order-number text-gray-500 font-mono text-sm">{{ $faq->order }}</span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="font-medium text-gray-900 dark:text-white">
@@ -138,7 +149,8 @@
                         <tr>
                             <td colspan="5" class="px-6 py-12 text-center">
                                 <div class="text-gray-400 mb-4">
-                                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
@@ -194,4 +206,94 @@
             @endforeach
         </div>
     </div>
+
+    @push('scripts')
+        <!-- SortableJS for drag and drop -->
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <style>
+            .sortable-ghost {
+                background-color: rgba(139, 92, 246, 0.1) !important;
+                opacity: 0.8;
+            }
+
+            .sortable-chosen {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .sortable-drag {
+                opacity: 0.5 !important;
+            }
+        </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const faqTableBody = document.getElementById('faqTableBody');
+
+                if (faqTableBody && faqTableBody.children.length > 0) {
+                    const sortable = new Sortable(faqTableBody, {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        handle: '.drag-handle',
+                        onEnd: function(evt) {
+                            // Get all FAQ IDs with their new order
+                            const orders = [];
+                            faqTableBody.querySelectorAll('[data-id]').forEach(function(el, index) {
+                                orders.push({
+                                    id: el.getAttribute('data-id'),
+                                    order: index
+                                });
+                            });
+
+                            // Send reorder request to server
+                            fetch('{{ route('admin.faqs.reorder') }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        orders: orders
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        showToast('FAQ order updated!', 'success');
+                                        // Update order numbers in the table
+                                        faqTableBody.querySelectorAll('[data-id]').forEach(function(el,
+                                            index) {
+                                            const orderSpan = el.querySelector('.order-number');
+                                            if (orderSpan) orderSpan.textContent = index;
+                                        });
+                                    } else {
+                                        showToast('Failed to update order', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Reorder error:', error);
+                                    showToast('Failed to update order', 'error');
+                                });
+                        }
+                    });
+                }
+            });
+
+            function showToast(message, type) {
+                const toast = document.createElement('div');
+                toast.className =
+                    `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white font-medium shadow-lg z-50 transition-all ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(20px)';
+                }, 2000);
+
+                setTimeout(() => toast.remove(), 2500);
+            }
+        </script>
+    @endpush
 @endsection

@@ -147,13 +147,15 @@
 
                 <div id="menuItemsList" class="divide-y divide-gray-200 dark:divide-gray-800">
                     @forelse($menu->items as $item)
-                        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50" data-id="{{ $item->id }}">
+                        <div class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                            data-id="{{ $item->id }}">
                             <div class="flex items-center gap-4">
                                 <!-- Drag Handle -->
-                                <div class="cursor-move text-gray-400 hover:text-gray-600">
+                                <div class="cursor-move text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 -m-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    title="Drag to reorder">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 8h16M4 16h16"></path>
+                                            d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
                                     </svg>
                                 </div>
 
@@ -290,6 +292,22 @@
     </div>
 
     @push('scripts')
+        <!-- SortableJS for drag and drop -->
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <style>
+            .sortable-ghost {
+                background-color: rgba(139, 92, 246, 0.1) !important;
+                opacity: 0.8;
+            }
+
+            .sortable-chosen {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+            }
+
+            .sortable-drag {
+                opacity: 0.5 !important;
+            }
+        </style>
         <script>
             function editItem(id) {
                 const form = document.getElementById('editForm' + id);
@@ -305,6 +323,74 @@
                     customUrlDiv.style.display = 'block';
                 }
             });
+
+            // Initialize SortableJS for drag and drop reordering
+            document.addEventListener('DOMContentLoaded', function() {
+                const menuItemsList = document.getElementById('menuItemsList');
+
+                if (menuItemsList && menuItemsList.children.length > 0) {
+                    const sortable = new Sortable(menuItemsList, {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        handle: '.cursor-move',
+                        onEnd: function(evt) {
+                            // Get all item IDs in new order
+                            const items = [];
+                            menuItemsList.querySelectorAll('[data-id]').forEach(function(el, index) {
+                                items.push(el.getAttribute('data-id'));
+                            });
+
+                            // Send reorder request to server
+                            fetch('{{ route('admin.menus.items.reorder', $menu) }}', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Accept': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        items: items
+                                    })
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        // Show success toast
+                                        showToast('Menu order updated successfully!', 'success');
+                                    } else {
+                                        showToast('Failed to update order', 'error');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Reorder error:', error);
+                                    showToast('Failed to update order', 'error');
+                                });
+                        }
+                    });
+                }
+            });
+
+            // Toast notification function
+            function showToast(message, type) {
+                const toast = document.createElement('div');
+                toast.className =
+                    `fixed bottom-4 right-4 px-6 py-3 rounded-lg text-white font-medium shadow-lg z-50 transition-all transform translate-y-0 opacity-100 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                // Animate in
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(20px)';
+                }, 2000);
+
+                // Remove after animation
+                setTimeout(() => {
+                    toast.remove();
+                }, 2500);
+            }
         </script>
     @endpush
 @endsection
