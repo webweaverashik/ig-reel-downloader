@@ -99,7 +99,7 @@ def find_ytdlp_command(ytdlp_input):
             env=get_env()
         )
         if result.returncode == 0:
-            log_debug(f"Using yt-dlp as Python module: {python_bin} -m yt_dlp")
+            log_debug(f"Using yt-dlp as Python module: {python_bin} -m yt_dlp (version: {result.stdout.strip()})")
             return [python_bin, '-m', 'yt_dlp']
     except Exception as e:
         log_debug(f"Module check failed: {e}")
@@ -107,7 +107,6 @@ def find_ytdlp_command(ytdlp_input):
     # Check if the provided path is a directory (Python package)
     if ytdlp_input and os.path.isdir(ytdlp_input):
         log_debug(f"yt-dlp path is a directory: {ytdlp_input}, using as module")
-        # It's a directory, use python -m approach
         return [python_bin, '-m', 'yt_dlp']
     
     # Try to find yt-dlp as executable
@@ -150,7 +149,7 @@ def find_ytdlp_command(ytdlp_input):
                     env=get_env()
                 )
                 if result.returncode == 0:
-                    log_debug(f"Found working yt-dlp binary: {candidate}")
+                    log_debug(f"Found working yt-dlp binary: {candidate} (version: {result.stdout.strip()})")
                     return [candidate]
         except Exception as e:
             log_debug(f"Binary check failed for {candidate}: {e}")
@@ -166,7 +165,7 @@ def find_ytdlp_command(ytdlp_input):
             env=get_env()
         )
         if result.returncode == 0:
-            log_debug("Using 'yt-dlp' from PATH")
+            log_debug(f"Using 'yt-dlp' from PATH (version: {result.stdout.strip()})")
             return ['yt-dlp']
     except Exception:
         pass
@@ -295,6 +294,14 @@ def extract_shortcode(url):
     return hashlib.md5(url.encode()).hexdigest()[:12]
 
 
+def extract_username_from_url(url):
+    """Extract username from story URL if present."""
+    match = re.search(r'/stories/([^/]+)/', url)
+    if match:
+        return match.group(1)
+    return None
+
+
 def find_carousel_media(html, shortcode):
     """
     Find carousel media items from Instagram HTML.
@@ -370,6 +377,104 @@ def find_carousel_media(html, shortcode):
     return image_urls
 
 
+def extract_post_info_from_html(html, shortcode):
+    """
+    Extract post information (username, caption, thumbnail) from HTML.
+    Returns dict with username, caption, thumbnail.
+    """
+    info = {
+        'username': None,
+        'caption': None,
+        'thumbnail': None
+    }
+    
+    # Method 1: Look for owner username near the shortcode
+    # Find the media block containing this shortcode
+    shortcode_pattern = rf'"shortcode"\s*:\s*"{re.escape(shortcode)}"'
+    shortcode_pos = -1
+    
+    match = re.search(shortcode_pattern, html)
+    if match:
+        shortcode_pos = match.start()
+    
+    if shortcode_pos != -1:
+        # Search in a window around the shortcode for the owner
+        window_start = max(0, shortcode_pos - 5000)
+        window_end = min(len(html), shortcode_pos + 5000)
+        window = html[window_start:window_end]
+        
+        # Look for owner block with username
+        owner_patterns = [
+            r'"owner"\s*:\s*\{[^}]*"username"\s*:\s*"([^"]+)"',
+            r'"user"\s*:\s*\{[^}]*"username"\s*:\s*"([^"]+)"',
+        ]
+        
+        for pattern in owner_patterns:
+            username_match = re.search(pattern, window)
+            if username_match:
+                info['username'] = username_match.group(1)
+                log_debug(f"Found username from owner block: {info['username']}")
+                break
+    
+    # Method 2: Look for author meta tag
+    if not info['username']:
+        author_pattern = r'<meta\s+name=["\']author["\']\s+content=["\']@?([^"\']+)["\']'
+        author_match = re.search(author_pattern, html, re.I)
+        if author_match:
+            info['username'] = author_match.group(1)
+            log_debug(f"Found username from meta author: {info['username']}")
+    
+    # Method 3: Look for instapp:owner_user_id and then find username
+    if not info['username']:
+        # Try to find username in og:description or other meta tags
+        desc_pattern = r'<meta\s+(?:property|name)=["\']og:description["\']\s+content=["\']([^"\']+)["\']'
+        desc_match = re.search(desc_pattern, html, re.I)
+        if desc_match:
+            desc = desc_match.group(1)
+            # Description often starts with "X likes, Y comments - username"
+            # Or "username on Instagram: ..."
+            username_from_desc = re.search(r'^([^:\s]+)\s+on\s+Instagram', desc)
+            if username_from_desc:
+                info['username'] = username_from_desc.group(1)
+                log_debug(f"Found username from og:description: {info['username']}")
+    
+    # Method 4: Look in title tag
+    if not info['username']:
+        title_pattern = r'<title>([^<]+)</title>'
+        title_match = re.search(title_pattern, html, re.I)
+        if title_match:
+            title = title_match.group(1)
+            # Title often contains: "username on Instagram: ..." or "@username ..."
+            username_from_title = re.search(r'[@]?([a-zA-Z0-9._]+)\s+(?:on\s+Instagram|•)', title)
+            if username_from_title:
+                info['username'] = username_from_title.group(1)
+                log_debug(f"Found username from title: {info['username']}")
+    
+    # Extract caption
+    caption_patterns = [
+        r'"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
+        r'"caption"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
+        r'"accessibility_caption"\s*:\s*"([^"]*)"',
+    ]
+    for pattern in caption_patterns:
+        caption_match = re.search(pattern, html)
+        if caption_match:
+            info['caption'] = caption_match.group(1)
+            try:
+                info['caption'] = info['caption'].encode().decode('unicode_escape')
+            except:
+                pass
+            break
+    
+    # Extract thumbnail from og:image
+    og_image_pattern = r'<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\']'
+    og_match = re.search(og_image_pattern, html, re.I)
+    if og_match:
+        info['thumbnail'] = og_match.group(1).replace('&amp;', '&')
+    
+    return info
+
+
 def extract_post_images_from_page(url, cookies_dict, shortcode):
     """
     Extract image URLs specifically for the target post.
@@ -401,9 +506,10 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
         log_debug(f"Looking for shortcode: {shortcode}")
         
         image_urls = []
-        username = None
-        caption = None
         is_carousel = False
+        
+        # Extract post info (username, caption, thumbnail)
+        post_info = extract_post_info_from_html(html, shortcode)
         
         # Check if this is a carousel post
         if '"edge_sidecar_to_children"' in html or '"carousel_media"' in html or '"GraphSidecar"' in html:
@@ -470,33 +576,6 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
                             image_urls.append(decoded_url)
                             log_debug(f"Found image_versions2 candidate: {decoded_url[:60]}...")
         
-        # Extract username
-        username_patterns = [
-            r'"username"\s*:\s*"([^"]+)"',
-            r'"owner"\s*:\s*\{[^}]*"username"\s*:\s*"([^"]+)"',
-        ]
-        for pattern in username_patterns:
-            username_match = re.search(pattern, html)
-            if username_match:
-                username = username_match.group(1)
-                break
-        
-        # Extract caption
-        caption_patterns = [
-            r'"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
-            r'"caption"\s*:\s*\{\s*"text"\s*:\s*"([^"]*)"',
-            r'"accessibility_caption"\s*:\s*"([^"]*)"',
-        ]
-        for pattern in caption_patterns:
-            caption_match = re.search(pattern, html)
-            if caption_match:
-                caption = caption_match.group(1)
-                try:
-                    caption = caption.encode().decode('unicode_escape')
-                except:
-                    pass
-                break
-        
         # Deduplicate images by base URL
         if len(image_urls) > 1:
             seen_bases = set()
@@ -520,8 +599,9 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
         
         return {
             'image_urls': image_urls,
-            'username': username,
-            'caption': caption,
+            'username': post_info['username'],
+            'caption': post_info['caption'],
+            'thumbnail': post_info['thumbnail'],
             'is_carousel': is_carousel or len(image_urls) > 1
         }
         
@@ -533,50 +613,9 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
             'image_urls': [],
             'username': None,
             'caption': None,
+            'thumbnail': None,
             'is_carousel': False
         }
-
-
-def fetch_metadata(url, cookies_path, ytdlp_cmd):
-    """Fetch metadata using yt-dlp --dump-json."""
-    args = [
-        '--cookies', cookies_path,
-        '--dump-json',
-        '--no-download',
-        '--no-warnings',
-        '--no-check-certificates',
-        '--socket-timeout', '30',
-        '--extractor-args', 'instagram:api_only=false',
-        url
-    ]
-
-    log_debug(f"Fetching metadata with cookie: {os.path.basename(cookies_path)}")
-    return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, args, timeout=60)
-
-    if return_code != 0:
-        combined = (stderr + '\n' + stdout).strip()
-        return None, combined
-
-    output_lines = stdout.strip().split('\n')
-    entries = []
-
-    for line in output_lines:
-        if line.strip():
-            try:
-                entry = json.loads(line)
-                entries.append(entry)
-            except json.JSONDecodeError:
-                continue
-
-    if not entries:
-        return None, "No content found at this URL."
-
-    main_info = entries[0].copy()
-    if len(entries) > 1:
-        main_info['entries'] = entries
-        main_info['_type'] = 'playlist'
-
-    return main_info, None
 
 
 def is_photo_only_error(error_text):
@@ -592,61 +631,90 @@ def is_photo_only_error(error_text):
     return any(indicator in error_lower for indicator in photo_indicators)
 
 
-def download_photo_content(url, download_path, cookies_path, info_dict=None):
-    """Download photo content from Instagram."""
-    Path(download_path).mkdir(parents=True, exist_ok=True)
+def is_ytdlp_execution_error(error_text):
+    """Check if error is a yt-dlp execution/crash error (not content-related)."""
+    if not error_text:
+        return False
+    error_lower = error_text.lower()
+    execution_indicators = [
+        'traceback',
+        'modulenotfounderror',
+        'importerror',
+        'syntaxerror',
+        'nameerror',
+        'typeerror',
+        'attributeerror',
+        'filenotfounderror',
+        '__main__',
+        'frozen runpy',
+        '_run_module_as_main',
+    ]
+    return any(indicator in error_lower for indicator in execution_indicators)
+
+
+def is_permanent_content_error(error_text):
+    """Check if error is a permanent content error (not retryable)."""
+    if not error_text:
+        return False
     
-    cookies_dict = parse_netscape_cookies(cookies_path)
-    log_debug(f"Parsed {len(cookies_dict)} cookies from file")
+    # First, make sure it's NOT a yt-dlp execution error
+    if is_ytdlp_execution_error(error_text):
+        return False
     
-    shortcode = extract_shortcode(url)
-    log_debug(f"Extracted shortcode: {shortcode}")
+    error_lower = error_text.lower()
+    permanent_keywords = [
+        'private',
+        'does not exist',
+        'unavailable',
+        'blocked',
+        'this content isn\'t available',
+        'page not found',
+        'sorry, this page',
+    ]
+    return any(keyword in error_lower for keyword in permanent_keywords)
+
+
+def is_not_found_error(error_text):
+    """Check if error indicates content was not found/removed."""
+    if not error_text:
+        return False
     
-    # Extract post data from page
-    post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
-    image_urls = post_data.get('image_urls', [])
-    username = post_data.get('username', 'instagram_user')
-    caption = post_data.get('caption', '')
-    is_carousel = post_data.get('is_carousel', False)
+    # First, make sure it's NOT a yt-dlp execution error
+    if is_ytdlp_execution_error(error_text):
+        return False
     
-    if not image_urls:
-        return None, "Could not find any image URLs for this post.", None
+    error_lower = error_text.lower()
+    not_found_keywords = [
+        'not found',
+        '404',
+        'removed',
+        'deleted',
+        'no longer available',
+    ]
+    return any(keyword in error_lower for keyword in not_found_keywords)
+
+
+def is_cookie_error(error_text):
+    """Check if error is related to cookies/authentication."""
+    if not error_text:
+        return False
     
-    log_debug(f"Downloading {len(image_urls)} image(s), is_carousel={is_carousel}")
+    # First, make sure it's NOT a yt-dlp execution error
+    if is_ytdlp_execution_error(error_text):
+        return False
     
-    downloaded_files = []
-    
-    for idx, img_url in enumerate(image_urls[:10]):  # Max 10 images (Instagram carousel limit)
-        ext = get_image_extension(img_url)
-        if len(image_urls) == 1:
-            filename = f"{shortcode}.{ext}"
-        else:
-            filename = f"{shortcode}_{idx + 1:02d}.{ext}"
-        save_path = os.path.join(download_path, filename)
-        
-        log_debug(f"Downloading image {idx + 1}: {img_url[:80]}...")
-        
-        if download_image_with_requests(img_url, save_path, cookies_dict):
-            # Verify file was downloaded and has content
-            if os.path.exists(save_path) and os.path.getsize(save_path) > 1000:
-                downloaded_files.append(Path(save_path))
-                log_debug(f"Successfully downloaded: {filename}")
-            else:
-                log_debug(f"Downloaded file too small or missing: {filename}")
-                if os.path.exists(save_path):
-                    os.remove(save_path)
-        else:
-            log_debug(f"Failed to download image {idx + 1}")
-    
-    if not downloaded_files:
-        return None, "Failed to download any images.", None
-    
-    return downloaded_files, None, {
-        'username': username,
-        'caption': caption,
-        'thumbnail': image_urls[0] if image_urls else '',
-        'is_carousel': is_carousel
-    }
+    error_lower = error_text.lower()
+    cookie_keywords = [
+        'login required',
+        'login_required',
+        'please log in',
+        'authentication required',
+        'session expired',
+        'invalid session',
+        'cookie',
+        'sessionid',
+    ]
+    return any(keyword in error_lower for keyword in cookie_keywords)
 
 
 def get_content_type(url, info_dict=None, is_photo=False, is_carousel=False):
@@ -698,6 +766,137 @@ def get_quality_label(info_dict):
     return 'Original'
 
 
+def extract_username_from_ytdlp(info_dict, url):
+    """Extract the correct username from yt-dlp info dict."""
+    if not info_dict:
+        return None
+    
+    # Priority order for username extraction:
+    # 1. channel (usually the post author)
+    # 2. uploader (might be the logged-in user sometimes)
+    # 3. uploader_id
+    
+    username = None
+    
+    # Try channel first (most reliable for post author)
+    if info_dict.get('channel'):
+        username = info_dict['channel']
+    elif info_dict.get('uploader'):
+        username = info_dict['uploader']
+    elif info_dict.get('uploader_id'):
+        username = info_dict['uploader_id']
+    
+    # If still no username, try to extract from URL for stories
+    if not username:
+        username = extract_username_from_url(url)
+    
+    # Clean up username (remove @ if present)
+    if username and username.startswith('@'):
+        username = username[1:]
+    
+    return username
+
+
+def download_photo_content(url, download_path, cookies_path, info_dict=None):
+    """Download photo content from Instagram."""
+    Path(download_path).mkdir(parents=True, exist_ok=True)
+    
+    cookies_dict = parse_netscape_cookies(cookies_path)
+    log_debug(f"Parsed {len(cookies_dict)} cookies from file")
+    
+    shortcode = extract_shortcode(url)
+    log_debug(f"Extracted shortcode: {shortcode}")
+    
+    # Extract post data from page
+    post_data = extract_post_images_from_page(url, cookies_dict, shortcode)
+    image_urls = post_data.get('image_urls', [])
+    username = post_data.get('username', 'instagram_user')
+    caption = post_data.get('caption', '')
+    thumbnail = post_data.get('thumbnail', '')
+    is_carousel = post_data.get('is_carousel', False)
+    
+    if not image_urls:
+        return None, "Could not find any image URLs for this post.", None
+    
+    log_debug(f"Downloading {len(image_urls)} image(s), is_carousel={is_carousel}")
+    
+    downloaded_files = []
+    
+    for idx, img_url in enumerate(image_urls[:10]):  # Max 10 images (Instagram carousel limit)
+        ext = get_image_extension(img_url)
+        if len(image_urls) == 1:
+            filename = f"{shortcode}.{ext}"
+        else:
+            filename = f"{shortcode}_{idx + 1:02d}.{ext}"
+        save_path = os.path.join(download_path, filename)
+        
+        log_debug(f"Downloading image {idx + 1}: {img_url[:80]}...")
+        
+        if download_image_with_requests(img_url, save_path, cookies_dict):
+            # Verify file was downloaded and has content
+            if os.path.exists(save_path) and os.path.getsize(save_path) > 1000:
+                downloaded_files.append(Path(save_path))
+                log_debug(f"Successfully downloaded: {filename}")
+            else:
+                log_debug(f"Downloaded file too small or missing: {filename}")
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+        else:
+            log_debug(f"Failed to download image {idx + 1}")
+    
+    if not downloaded_files:
+        return None, "Failed to download any images.", None
+    
+    return downloaded_files, None, {
+        'username': username,
+        'caption': caption,
+        'thumbnail': thumbnail or (image_urls[0] if image_urls else ''),
+        'is_carousel': is_carousel
+    }
+
+
+def fetch_metadata(url, cookies_path, ytdlp_cmd):
+    """Fetch metadata using yt-dlp --dump-json."""
+    args = [
+        '--cookies', cookies_path,
+        '--dump-json',
+        '--no-download',
+        '--no-warnings',
+        '--no-check-certificates',
+        '--socket-timeout', '30',
+        '--extractor-args', 'instagram:api_only=false',
+        url
+    ]
+
+    log_debug(f"Fetching metadata with cookie: {os.path.basename(cookies_path)}")
+    return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, args, timeout=60)
+
+    if return_code != 0:
+        combined = (stderr + '\n' + stdout).strip()
+        return None, combined
+
+    output_lines = stdout.strip().split('\n')
+    entries = []
+
+    for line in output_lines:
+        if line.strip():
+            try:
+                entry = json.loads(line)
+                entries.append(entry)
+            except json.JSONDecodeError:
+                continue
+
+    if not entries:
+        return None, "No content found at this URL."
+
+    main_info = entries[0].copy()
+    if len(entries) > 1:
+        main_info['entries'] = entries
+        main_info['_type'] = 'playlist'
+
+    return main_info, None
+
+
 def download_video_content(url, download_path, cookies_path, ytdlp_cmd, content_type='video'):
     """Download video content using yt-dlp."""
     Path(download_path).mkdir(parents=True, exist_ok=True)
@@ -713,6 +912,7 @@ def download_video_content(url, download_path, cookies_path, ytdlp_cmd, content_
         '--merge-output-format', 'mp4',
         '--write-thumbnail',
         '--convert-thumbnails', 'jpg',
+        '--extractor-args', 'instagram:api_only=false',
         url
     ]
 
@@ -745,7 +945,7 @@ def download_video_content(url, download_path, cookies_path, ytdlp_cmd, content_
 
 
 def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
-    """Try to download content with a specific cookie file."""
+    """Try to fetch and download with a specific cookie file."""
     cookie_name = os.path.basename(cookie_path)
     log_debug(f"Trying cookie #{cookie_index + 1}: {cookie_name}")
 
@@ -764,22 +964,30 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
     
     is_photo_post = False
     is_carousel = False
+    extra_info = None
     
     if error_msg:
+        log_debug(f"Metadata fetch error: {error_msg[:200]}")
+        
+        # Check if it's a yt-dlp execution error (should retry with different approach)
+        if is_ytdlp_execution_error(error_msg):
+            log_debug("Detected yt-dlp execution error, this is a system issue not content issue")
+            return None, error_msg, "ytdlp_error", True
+        
         # Check if it's a "no video formats" error - means it's a photo post
         if is_photo_only_error(error_msg):
             log_debug("Detected photo post (no video formats), switching to photo download...")
             is_photo_post = True
-            info_dict = None  # Reset, we'll extract from page
-        elif 'private' in error_msg.lower():
-            return None, "This content is from a private account.", "private_content", False
-        elif 'not found' in error_msg.lower() or '404' in error_msg.lower():
+            info_dict = None
+        elif is_permanent_content_error(error_msg):
+            return None, "This content is from a private account or is not available.", "private_content", False
+        elif is_not_found_error(error_msg):
             return None, "This post was not found or has been removed.", "not_found", False
-        elif 'login' in error_msg.lower() or 'cookie' in error_msg.lower():
+        elif is_cookie_error(error_msg):
             return None, error_msg, "cookie_error", True
         else:
-            # Try as photo anyway
-            log_debug(f"Metadata error: {error_msg[:100]}, trying as photo...")
+            # Unknown error - try as photo before giving up
+            log_debug(f"Unknown error, trying as photo...")
             is_photo_post = True
             info_dict = None
     
@@ -787,7 +995,6 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
     log_debug(f"Content type: {content_type}, is_photo: {is_photo_post}")
     
     # Download based on content type
-    extra_info = None
     if is_photo_post or content_type == 'photo':
         media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
         if extra_info:
@@ -803,6 +1010,11 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
             media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
             if extra_info:
                 is_carousel = extra_info.get('is_carousel', False)
+        elif error_msg and is_ytdlp_execution_error(error_msg):
+            log_debug("yt-dlp execution error during download, trying photo fallback...")
+            media_files, error_msg, extra_info = download_photo_content(url, download_path, cookie_path, info_dict)
+            if extra_info:
+                is_carousel = extra_info.get('is_carousel', False)
     
     if error_msg:
         return None, error_msg, "download_error", True
@@ -814,16 +1026,17 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
     content_type = get_content_type(url, info_dict, is_photo_post, is_carousel)
     
     # Build response
-    username = 'instagram_user'
+    username = None
     caption = ''
     thumbnail = ''
     
+    # Get username from yt-dlp info (with proper extraction)
     if info_dict:
-        username = info_dict.get('uploader', info_dict.get('uploader_id', 'instagram_user'))
+        username = extract_username_from_ytdlp(info_dict, url)
         caption = info_dict.get('description', info_dict.get('title', ''))
         thumbnail = info_dict.get('thumbnail', '')
     
-    # Override with extra_info from photo download if available
+    # Override with extra_info from photo download if available (more accurate for photos)
     if extra_info:
         if extra_info.get('username'):
             username = extra_info['username']
@@ -831,6 +1044,10 @@ def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
             caption = extra_info['caption']
         if extra_info.get('thumbnail'):
             thumbnail = extra_info['thumbnail']
+    
+    # Fallback username
+    if not username:
+        username = 'instagram_user'
     
     items = []
     for i, file_path in enumerate(media_files):
@@ -916,8 +1133,10 @@ def main():
     # Verify yt-dlp works
     return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, ['--version'], timeout=15)
     if return_code != 0:
-        log_error(f"yt-dlp failed: {stderr[:200]}", "ytdlp_crashed")
-    log_debug(f"yt-dlp version: {stdout.strip()}")
+        log_debug(f"yt-dlp verification failed: {stderr[:200]}")
+        # Don't exit here, we might be able to download photos without yt-dlp
+    else:
+        log_debug(f"yt-dlp version: {stdout.strip()}")
 
     # Try each cookie file
     last_error = None
@@ -971,6 +1190,13 @@ def main():
         log_error("This content is from a private account.", "private_content", cookies_tried, debug_info)
     elif last_error_type == "not_found":
         log_error("This post was not found or has been removed.", "not_found", cookies_tried, debug_info)
+    elif last_error_type == "ytdlp_error":
+        log_error(
+            "yt-dlp execution error. Please check yt-dlp installation.",
+            "ytdlp_error",
+            cookies_tried,
+            debug_info
+        )
     else:
         log_error(
             f"All {cookies_tried} cookie(s) failed. Please check cookie files and try again.",
