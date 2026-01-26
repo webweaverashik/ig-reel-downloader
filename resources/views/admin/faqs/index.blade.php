@@ -44,19 +44,19 @@
     <!-- Stats -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-            <p class="text-2xl font-bold text-violet-600">{{ \App\Models\Faq::count() }}</p>
+            <p class="text-2xl font-bold text-violet-600">{{ $stats['total'] ?? 0 }}</p>
             <p class="text-sm text-gray-500">Total FAQs</p>
         </div>
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-            <p class="text-2xl font-bold text-green-600">{{ \App\Models\Faq::where('is_active', true)->count() }}</p>
+            <p class="text-2xl font-bold text-green-600">{{ $stats['active'] ?? 0 }}</p>
             <p class="text-sm text-gray-500">Active FAQs</p>
         </div>
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-            <p class="text-2xl font-bold text-orange-600">{{ \App\Models\Faq::where('is_active', false)->count() }}</p>
+            <p class="text-2xl font-bold text-orange-600">{{ $stats['inactive'] ?? 0 }}</p>
             <p class="text-sm text-gray-500">Inactive FAQs</p>
         </div>
         <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4">
-            <p class="text-2xl font-bold text-blue-600">{{ \App\Models\Faq::distinct('page_slug')->count('page_slug') }}</p>
+            <p class="text-2xl font-bold text-blue-600">{{ $stats['pages'] ?? 0 }}</p>
             <p class="text-sm text-gray-500">Pages with FAQs</p>
         </div>
     </div>
@@ -84,54 +84,57 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
-                    @forelse($faqs as $faq)
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                            <td class="px-6 py-4 text-center">
-                                <span class="text-gray-500 font-mono">{{ $faq->order }}</span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <div class="font-medium text-gray-900 dark:text-white">{{ Str::limit($faq->question, 60) }}
-                                </div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
-                                    {{ Str::limit($faq->answer, 80) }}</div>
-                            </td>
-                            <td class="px-6 py-4">
-                                <code
-                                    class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-sm text-violet-600 dark:text-violet-400">{{ $faq->page_slug }}</code>
-                            </td>
-                            <td class="px-6 py-4">
-                                @if ($faq->is_active)
-                                    <span
-                                        class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">Active</span>
-                                @else
-                                    <span
-                                        class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Inactive</span>
-                                @endif
-                            </td>
-                            <td class="px-6 py-4 text-right space-x-2">
-                                <a href="{{ route('admin.faqs.edit', $faq) }}"
-                                    class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400" title="Edit">
-                                    <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                </a>
-                                <form action="{{ route('admin.faqs.destroy', $faq) }}" method="POST" class="inline"
-                                    onsubmit="return confirm('Are you sure you want to delete this FAQ?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-gray-500 hover:text-red-600 dark:hover:text-red-400"
-                                        title="Delete">
+                    @if ($faqs->count() > 0)
+                        @foreach ($faqs as $faq)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-gray-500 font-mono">{{ $faq->order }}</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="font-medium text-gray-900 dark:text-white">
+                                        {{ Str::limit($faq->question, 60) }}</div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400 truncate max-w-md">
+                                        {{ Str::limit($faq->answer, 80) }}</div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <code
+                                        class="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-sm text-violet-600 dark:text-violet-400">{{ $faq->page_slug }}</code>
+                                </td>
+                                <td class="px-6 py-4">
+                                    @if ($faq->is_active)
+                                        <span
+                                            class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">Active</span>
+                                    @else
+                                        <span
+                                            class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">Inactive</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-right space-x-2">
+                                    <a href="{{ route('admin.faqs.edit', $faq) }}"
+                                        class="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400" title="Edit">
                                         <svg class="w-5 h-5 inline" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    @empty
+                                    </a>
+                                    <form action="{{ route('admin.faqs.destroy', $faq) }}" method="POST" class="inline"
+                                        onsubmit="return confirm('Are you sure you want to delete this FAQ?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                            class="text-gray-500 hover:text-red-600 dark:hover:text-red-400" title="Delete">
+                                            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @else
                         <tr>
                             <td colspan="5" class="px-6 py-12 text-center">
                                 <div class="text-gray-400 mb-4">
@@ -144,7 +147,9 @@
                                     @if (request('page_slug'))
                                         No FAQs found for page "{{ request('page_slug') }}".
                                     @else
-                                        No FAQs found in the database.
+                                        No FAQs found in the database. Run: <code
+                                            class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">php artisan
+                                            db:seed</code>
                                     @endif
                                 </p>
                                 <a href="{{ route('admin.faqs.create', ['page_slug' => request('page_slug')]) }}"
@@ -157,7 +162,7 @@
                                 </a>
                             </td>
                         </tr>
-                    @endforelse
+                    @endif
                 </tbody>
             </table>
         </div>

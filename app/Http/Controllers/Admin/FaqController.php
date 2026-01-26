@@ -20,10 +20,16 @@ class FaqController extends Controller
             $query->where('page_slug', $request->page_slug);
         }
 
+        // Clone query for counting before pagination
+        $totalFaqs     = Faq::count();
+        $activeFaqs    = Faq::where('is_active', true)->count();
+        $inactiveFaqs  = Faq::where('is_active', false)->count();
+        $pagesWithFaqs = Faq::distinct('page_slug')->count('page_slug');
+
         $faqs = $query->orderBy('page_slug')
             ->orderBy('order')
             ->orderBy('id')
-            ->paginate(20);
+            ->paginate(50);
 
         // Get all pages for the dropdown
         $pages = Page::orderBy('slug')->pluck('title', 'slug');
@@ -40,7 +46,14 @@ class FaqController extends Controller
             ]);
         }
 
-        return view('admin.faqs.index', compact('faqs', 'pages'));
+        $stats = [
+            'total'    => $totalFaqs,
+            'active'   => $activeFaqs,
+            'inactive' => $inactiveFaqs,
+            'pages'    => $pagesWithFaqs,
+        ];
+
+        return view('admin.faqs.index', compact('faqs', 'pages', 'stats'));
     }
 
     /**

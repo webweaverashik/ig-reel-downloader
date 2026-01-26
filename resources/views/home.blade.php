@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', $config['title'])
-@section('description', $config['meta_description'])
+@section('title', $config['title'] ?? 'IG Reel Downloader - Best Instagram Downloader')
+@section('description', $config['meta_description'] ?? 'Download Instagram content easily')
 
 @section('content')
     <!-- Hero Section -->
@@ -21,26 +21,26 @@
                         d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                         clip-rule="evenodd"></path>
                 </svg>
-                {{ $config['badge'] }}
+                {{ $config['badge'] ?? '100% Free & Unlimited Downloads' }}
             </div>
 
             <!-- Main Title (H1) -->
             <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white mb-4 slide-up"
                 style="animation-delay: 0.1s">
-                {{ $config['hero_title'] }}
+                {{ $config['hero_title'] ?? 'IG Reel Downloader' }}
             </h1>
 
             <!-- Subtitle with gradient (H2) -->
             <h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6 slide-up" style="animation-delay: 0.2s">
                 <span class="bg-gradient-to-r from-violet-600 via-pink-500 to-orange-400 bg-clip-text text-transparent">
-                    {{ $config['hero_highlight'] }}
+                    {{ $config['hero_highlight'] ?? 'Best Instagram Downloader' }}
                 </span>
             </h2>
 
             <!-- Description -->
             <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-400 mb-10 max-w-3xl mx-auto slide-up"
                 style="animation-delay: 0.3s">
-                {{ $config['subtitle'] }}
+                {{ $config['subtitle'] ?? 'Download any reels, videos and photos from Instagram easily. Free, fast, and no login required.' }}
             </p>
 
             <!-- URL Input Form -->
@@ -54,7 +54,8 @@
                                 </path>
                             </svg>
                         </div>
-                        <input type="text" id="urlInput" name="url" placeholder="{{ $config['placeholder'] }}"
+                        <input type="text" id="urlInput" name="url"
+                            placeholder="{{ $config['placeholder'] ?? 'Paste Instagram URL here (Reels, Videos, Photos)...' }}"
                             class="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:border-violet-500 dark:focus:border-violet-500 focus:ring-4 focus:ring-violet-500/20 outline-none transition-all text-base shadow-lg"
                             autocomplete="off">
                     </div>
@@ -97,14 +98,16 @@
             </div>
 
             <!-- Supported Formats -->
-            <div class="flex flex-wrap justify-center gap-3 mt-8 slide-up" style="animation-delay: 0.5s">
-                @foreach ($config['formats'] as $format)
-                    <span
-                        class="px-4 py-2 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium shadow-sm border border-gray-100 dark:border-gray-700">
-                        {{ $format }}
-                    </span>
-                @endforeach
-            </div>
+            @if (!empty($config['formats']))
+                <div class="flex flex-wrap justify-center gap-3 mt-8 slide-up" style="animation-delay: 0.5s">
+                    @foreach ($config['formats'] as $format)
+                        <span
+                            class="px-4 py-2 rounded-full bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm font-medium shadow-sm border border-gray-100 dark:border-gray-700">
+                            {{ $format }}
+                        </span>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 
@@ -337,37 +340,39 @@
     </section>
 
     <!-- FAQ Section -->
-    <section class="py-16 bg-white dark:bg-gray-900">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                    Frequently Asked Questions
-                </h2>
-                <p class="text-gray-600 dark:text-gray-400">
-                    Everything you need to know about IG Reel Downloader
-                </p>
-            </div>
+    @if (!empty($config['faqs']) && count($config['faqs']) > 0)
+        <section id="faq" class="py-16 bg-white dark:bg-gray-900">
+            <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                        Frequently Asked Questions
+                    </h2>
+                    <p class="text-gray-600 dark:text-gray-400">
+                        Everything you need to know about IG Reel Downloader
+                    </p>
+                </div>
 
-            <div class="space-y-4">
-                @foreach ($config['faqs'] as $faq)
-                    <div class="faq-item border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
-                        <button
-                            class="faq-toggle w-full p-5 text-left flex items-center justify-between bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                            <span class="font-semibold text-gray-900 dark:text-white pr-4">{{ $faq['q'] }}</span>
-                            <svg class="faq-icon w-5 h-5 text-gray-500 transition-transform flex-shrink-0" fill="none"
-                                stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7">
-                                </path>
-                            </svg>
-                        </button>
-                        <div class="faq-content hidden p-5 bg-white dark:bg-gray-800/50">
-                            <p class="text-gray-600 dark:text-gray-400">{{ $faq['a'] }}</p>
+                <div class="space-y-4">
+                    @foreach ($config['faqs'] as $faq)
+                        <div class="faq-item border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden">
+                            <button
+                                class="faq-toggle w-full p-5 text-left flex items-center justify-between bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <span class="font-semibold text-gray-900 dark:text-white pr-4">{{ $faq['q'] }}</span>
+                                <svg class="faq-icon w-5 h-5 text-gray-500 transition-transform flex-shrink-0"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                            <div class="faq-content hidden p-5 bg-white dark:bg-gray-800/50">
+                                <p class="text-gray-600 dark:text-gray-400">{{ $faq['a'] }}</p>
+                            </div>
                         </div>
-                    </div>
-                @endforeach
+                    @endforeach
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
+    @endif
 @endsection
 
 @push('scripts')

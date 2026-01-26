@@ -60,9 +60,10 @@
                             </div>
                             <div>
                                 <h4 class="font-medium text-gray-900 dark:text-white">Email Us</h4>
-                                <a href="mailto:support@igreeldownloader.net"
-                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">support@igreeldownloader.net</a>
-                                <p class="text-gray-500 dark:text-gray-500 text-xs mt-1">We respond within 24-48 hours</p>
+                                <a href="mailto:{{ $contactEmail ?? 'support@igreeldownloader.net' }}"
+                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">{{ $contactEmail ?? 'support@igreeldownloader.net' }}</a>
+                                <p class="text-gray-500 dark:text-gray-500 text-xs mt-1">We respond within
+                                    {{ $responseTimeGeneral ?? '24-48 hours' }}</p>
                             </div>
                         </div>
 
@@ -79,8 +80,8 @@
                             </div>
                             <div>
                                 <h4 class="font-medium text-gray-900 dark:text-white">DMCA Requests</h4>
-                                <a href="mailto:dmca@igreeldownloader.net"
-                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">dmca@igreeldownloader.net</a>
+                                <a href="mailto:{{ $dmcaEmail ?? 'dmca@igreeldownloader.net' }}"
+                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">{{ $dmcaEmail ?? 'dmca@igreeldownloader.net' }}</a>
                                 <p class="text-gray-500 dark:text-gray-500 text-xs mt-1">Copyright takedown requests</p>
                             </div>
                         </div>
@@ -98,8 +99,8 @@
                             </div>
                             <div>
                                 <h4 class="font-medium text-gray-900 dark:text-white">Privacy Concerns</h4>
-                                <a href="mailto:privacy@igreeldownloader.net"
-                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">privacy@igreeldownloader.net</a>
+                                <a href="mailto:{{ $privacyEmail ?? 'privacy@igreeldownloader.net' }}"
+                                    class="text-violet-600 dark:text-violet-400 hover:underline text-sm">{{ $privacyEmail ?? 'privacy@igreeldownloader.net' }}</a>
                                 <p class="text-gray-500 dark:text-gray-500 text-xs mt-1">Data and privacy inquiries</p>
                             </div>
                         </div>
@@ -136,20 +137,17 @@
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-600 dark:text-gray-400 text-sm">General Inquiries</span>
                                 <span
-                                    class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">24-48
-                                    hours</span>
+                                    class="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">{{ $responseTimeGeneral ?? '24-48 hours' }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-600 dark:text-gray-400 text-sm">Technical Support</span>
                                 <span
-                                    class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-full">1-3
-                                    days</span>
+                                    class="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-medium rounded-full">{{ $responseTimeSupport ?? '1-3 days' }}</span>
                             </div>
                             <div class="flex items-center justify-between">
                                 <span class="text-gray-600 dark:text-gray-400 text-sm">DMCA Requests</span>
                                 <span
-                                    class="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium rounded-full">3-5
-                                    days</span>
+                                    class="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium rounded-full">{{ $responseTimeDmca ?? '3-5 days' }}</span>
                             </div>
                         </div>
                     </div>
@@ -350,60 +348,6 @@
                 </div>
 
                 <!-- Issue 3 -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-                    <div
-                        class="w-12 h-12 rounded-xl bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Private Content Error</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">
-                        We can only download content from <strong>public profiles</strong>. Ask the account owner to make
-                        their account public, or request permission directly.
-                    </p>
-                </div>
-
-                <!-- Issue 4 -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-                    <div
-                        class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Invalid URL Error</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">
-                        Make sure you're using the correct Instagram URL format. Copy the link directly from Instagram using
-                        the share button.
-                    </p>
-                </div>
-
-                <!-- Issue 5 -->
-                <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
-                    <div
-                        class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-4">
-                        <svg class="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
-                            </path>
-                        </svg>
-                    </div>
-                    <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Low Quality Downloads</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm">
-                        We always download in the highest quality available. The quality depends on what the original
-                        uploader posted.
-                    </p>
-                </div>
-
-                <!-- Issue 6 -->
                 <div class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700">
                     <div
                         class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">

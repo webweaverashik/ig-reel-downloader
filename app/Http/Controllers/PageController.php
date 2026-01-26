@@ -15,7 +15,7 @@ class PageController extends Controller
      */
     public function privacyPolicy()
     {
-        $page = Page::findBySlug('privacy-policy');
+        $page = Page::where('slug', 'privacy-policy')->first();
 
         return view('privacy-policy', [
             'pageType' => 'privacy-policy',
@@ -28,7 +28,7 @@ class PageController extends Controller
      */
     public function terms()
     {
-        $page = Page::findBySlug('terms');
+        $page = Page::where('slug', 'terms')->first();
 
         return view('terms', [
             'pageType' => 'terms',
