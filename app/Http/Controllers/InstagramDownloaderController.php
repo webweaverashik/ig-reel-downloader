@@ -449,8 +449,15 @@ class InstagramDownloaderController extends Controller
                 );
             }
 
-            $python    = $this->getPythonPath();
+            $python = $this->getPythonPath();
+
+            // Let Python find yt-dlp automatically (handles both binary and module)
             $ytDlpPath = $this->getYtDlpPath();
+            // If yt-dlp path is a directory (Python module), pass empty to let Python handle it
+            if (is_dir($ytDlpPath)) {
+                Log::info('yt-dlp path is a directory, letting Python find it as module');
+                $ytDlpPath = '';
+            }
 
             // Prepare cookies list as JSON (already absolute paths)
             $cookiesJson = json_encode($cookieFiles);

@@ -4,7 +4,7 @@ Instagram Downloader - Python Worker
 IGReelDownloader.net
 
 Supports: Reels, Videos, Photos, Stories, Carousel posts.
-- Uses yt-dlp for video content
+- Uses yt-dlp for video content (as module or binary)
 - Uses direct HTTP requests for photo content
 
 Usage:
@@ -82,11 +82,44 @@ def get_env():
     return env
 
 
-def find_ytdlp_binary(ytdlp_input):
-    """Find a working yt-dlp binary."""
+def find_ytdlp_command(ytdlp_input):
+    """
+    Find a working yt-dlp command.
+    Returns a list of command parts (e.g., ['yt-dlp'] or ['python3', '-m', 'yt_dlp'])
+    """
+    python_bin = sys.executable or 'python3'
+    
+    # First, check if yt-dlp is installed as a Python module
+    try:
+        result = subprocess.run(
+            [python_bin, '-m', 'yt_dlp', '--version'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=get_env()
+        )
+        if result.returncode == 0:
+            log_debug(f"Using yt-dlp as Python module: {python_bin} -m yt_dlp")
+            return [python_bin, '-m', 'yt_dlp']
+    except Exception as e:
+        log_debug(f"Module check failed: {e}")
+    
+    # Check if the provided path is a directory (Python package)
+    if ytdlp_input and os.path.isdir(ytdlp_input):
+        log_debug(f"yt-dlp path is a directory: {ytdlp_input}, using as module")
+        # It's a directory, use python -m approach
+        return [python_bin, '-m', 'yt_dlp']
+    
+    # Try to find yt-dlp as executable
     candidates = []
     if ytdlp_input and ytdlp_input.strip():
         candidates.append(ytdlp_input.strip())
+    
+    # Check which yt-dlp
+    which_result = shutil.which('yt-dlp')
+    if which_result:
+        candidates.append(which_result)
+    
     candidates.extend([
         '/usr/local/bin/yt-dlp',
         '/usr/bin/yt-dlp',
@@ -94,42 +127,63 @@ def find_ytdlp_binary(ytdlp_input):
         '/root/.local/bin/yt-dlp',
         'yt-dlp',
     ])
-    which_result = shutil.which('yt-dlp')
-    if which_result:
-        candidates.insert(1, which_result)
     
     seen = set()
-    unique_candidates = []
-    for c in candidates:
-        if c and c not in seen:
-            seen.add(c)
-            unique_candidates.append(c)
-    
-    for candidate in unique_candidates:
-        if not candidate:
+    for candidate in candidates:
+        if not candidate or candidate in seen:
             continue
+        seen.add(candidate)
+        
+        # Skip if it's a directory
+        if os.path.isdir(candidate):
+            log_debug(f"Skipping directory: {candidate}")
+            continue
+        
         try:
+            # Check if it's an executable file
             if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-                return candidate
-            result = subprocess.run(
-                [candidate, '--version'],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                env=get_env()
-            )
-            if result.returncode == 0:
-                return candidate
-        except Exception:
+                result = subprocess.run(
+                    [candidate, '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    env=get_env()
+                )
+                if result.returncode == 0:
+                    log_debug(f"Found working yt-dlp binary: {candidate}")
+                    return [candidate]
+        except Exception as e:
+            log_debug(f"Binary check failed for {candidate}: {e}")
             continue
-    return None
-
-
-def run_ytdlp(args, timeout=120):
-    """Run yt-dlp with proper error handling."""
+    
+    # Last resort: try running 'yt-dlp' command directly
     try:
         result = subprocess.run(
-            args,
+            ['yt-dlp', '--version'],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            env=get_env()
+        )
+        if result.returncode == 0:
+            log_debug("Using 'yt-dlp' from PATH")
+            return ['yt-dlp']
+    except Exception:
+        pass
+    
+    # Fallback to module approach
+    log_debug("Falling back to Python module approach")
+    return [python_bin, '-m', 'yt_dlp']
+
+
+def run_ytdlp(ytdlp_cmd, args, timeout=120):
+    """Run yt-dlp with proper error handling."""
+    full_cmd = ytdlp_cmd + args
+    log_debug(f"Running: {' '.join(full_cmd[:5])}...")
+    
+    try:
+        result = subprocess.run(
+            full_cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -139,7 +193,7 @@ def run_ytdlp(args, timeout=120):
     except subprocess.TimeoutExpired:
         return -2, '', 'Request timed out'
     except FileNotFoundError as e:
-        return -3, '', f'Binary not found: {str(e)}'
+        return -3, '', f'Command not found: {str(e)}'
     except Exception as e:
         return -5, '', f'Unexpected error: {str(e)}'
 
@@ -241,29 +295,6 @@ def extract_shortcode(url):
     return hashlib.md5(url.encode()).hexdigest()[:12]
 
 
-def extract_json_from_html(html):
-    """Extract all JSON objects from HTML that might contain media data."""
-    json_objects = []
-    
-    # Pattern 1: Look for require or define calls with JSON
-    patterns = [
-        r'window\._sharedData\s*=\s*(\{.+?\});',
-        r'window\.__additionalDataLoaded\s*\([^,]+,\s*(\{.+?\})\s*\)',
-        r'"media":\s*(\{.+?\})\s*[,}]',
-    ]
-    
-    for pattern in patterns:
-        matches = re.findall(pattern, html, re.DOTALL)
-        for match in matches:
-            try:
-                obj = json.loads(match)
-                json_objects.append(obj)
-            except:
-                pass
-    
-    return json_objects
-
-
 def find_carousel_media(html, shortcode):
     """
     Find carousel media items from Instagram HTML.
@@ -274,7 +305,6 @@ def find_carousel_media(html, shortcode):
     log_debug(f"Searching for carousel media with shortcode: {shortcode}")
     
     # Method 1: Look for edge_sidecar_to_children (carousel indicator)
-    # This contains all carousel items
     sidecar_pattern = r'"edge_sidecar_to_children"\s*:\s*\{\s*"edges"\s*:\s*\[(.*?)\]\s*\}'
     sidecar_match = re.search(sidecar_pattern, html, re.DOTALL)
     
@@ -386,13 +416,11 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
             log_debug("Trying single image extraction")
             
             # Method 1: Find display_url in the media data for this shortcode
-            # Look for the JSON block containing our shortcode
             shortcode_pattern = rf'"shortcode"\s*:\s*"{re.escape(shortcode)}"'
             if re.search(shortcode_pattern, html):
                 log_debug("Found shortcode in HTML")
                 
                 # Find the media block containing this shortcode
-                # Look backwards and forwards from shortcode to find display_url
                 shortcode_pos = html.find(f'"{shortcode}"')
                 if shortcode_pos != -1:
                     # Search in a window around the shortcode
@@ -475,7 +503,6 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
             unique_urls = []
             for img_url in image_urls:
                 # Extract a unique identifier from the URL
-                # Instagram URLs have patterns like /123456789_123456789_123456789_n.jpg
                 id_match = re.search(r'/(\d+_\d+_\d+_\w+)\.(jpg|jpeg|png|webp)', img_url, re.I)
                 if id_match:
                     img_id = id_match.group(1)
@@ -510,10 +537,9 @@ def extract_post_images_from_page(url, cookies_dict, shortcode):
         }
 
 
-def fetch_metadata(url, cookies_path, ytdlp_bin):
+def fetch_metadata(url, cookies_path, ytdlp_cmd):
     """Fetch metadata using yt-dlp --dump-json."""
-    cmd = [
-        ytdlp_bin,
+    args = [
         '--cookies', cookies_path,
         '--dump-json',
         '--no-download',
@@ -525,7 +551,7 @@ def fetch_metadata(url, cookies_path, ytdlp_bin):
     ]
 
     log_debug(f"Fetching metadata with cookie: {os.path.basename(cookies_path)}")
-    return_code, stdout, stderr = run_ytdlp(cmd, timeout=60)
+    return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, args, timeout=60)
 
     if return_code != 0:
         combined = (stderr + '\n' + stdout).strip()
@@ -672,13 +698,12 @@ def get_quality_label(info_dict):
     return 'Original'
 
 
-def download_video_content(url, download_path, cookies_path, ytdlp_bin, content_type='video'):
+def download_video_content(url, download_path, cookies_path, ytdlp_cmd, content_type='video'):
     """Download video content using yt-dlp."""
     Path(download_path).mkdir(parents=True, exist_ok=True)
     output_template = os.path.join(download_path, '%(id)s_%(autonumber)s.%(ext)s')
 
-    cmd = [
-        ytdlp_bin,
+    args = [
         '--cookies', cookies_path,
         '--no-warnings',
         '--no-check-certificates',
@@ -692,7 +717,7 @@ def download_video_content(url, download_path, cookies_path, ytdlp_bin, content_
     ]
 
     log_debug(f"Downloading video to: {download_path}")
-    return_code, stdout, stderr = run_ytdlp(cmd, timeout=300)
+    return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, args, timeout=300)
     combined_output = (stdout + '\n' + stderr).strip()
 
     if return_code != 0:
@@ -719,7 +744,7 @@ def download_video_content(url, download_path, cookies_path, ytdlp_bin, content_
     return None, "No media files were downloaded."
 
 
-def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
+def try_download(url, download_path, cookie_path, ytdlp_cmd, cookie_index):
     """Try to download content with a specific cookie file."""
     cookie_name = os.path.basename(cookie_path)
     log_debug(f"Trying cookie #{cookie_index + 1}: {cookie_name}")
@@ -735,7 +760,7 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
         return None, f"Cannot read cookie file: {str(e)}", "cookie_unreadable", True
 
     # First, try to fetch metadata
-    info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_bin)
+    info_dict, error_msg = fetch_metadata(url, cookie_path, ytdlp_cmd)
     
     is_photo_post = False
     is_carousel = False
@@ -769,7 +794,7 @@ def try_download(url, download_path, cookie_path, ytdlp_bin, cookie_index):
             is_carousel = extra_info.get('is_carousel', False)
     else:
         # Try video download first
-        media_files, error_msg = download_video_content(url, download_path, cookie_path, ytdlp_bin, content_type)
+        media_files, error_msg = download_video_content(url, download_path, cookie_path, ytdlp_cmd, content_type)
         
         # If video download fails with "no video formats", try photo download
         if error_msg and is_photo_only_error(error_msg):
@@ -861,11 +886,12 @@ def main():
     url = sys.argv[1]
     download_path = sys.argv[2]
     cookies_json = sys.argv[3]
-    ytdlp_input = sys.argv[4] if len(sys.argv) >= 5 else '/usr/local/bin/yt-dlp'
+    ytdlp_input = sys.argv[4] if len(sys.argv) >= 5 else ''
 
     log_debug(f"URL: {url}")
     log_debug(f"Download path: {download_path}")
     log_debug(f"Has requests library: {HAS_REQUESTS}")
+    log_debug(f"yt-dlp input: {ytdlp_input}")
 
     if not validate_url(url):
         log_error("Invalid Instagram URL format.", "invalid_url")
@@ -883,13 +909,12 @@ def main():
 
     log_debug(f"Cookie files: {len(cookie_files)}")
 
-    # Find yt-dlp binary
-    ytdlp_bin = find_ytdlp_binary(ytdlp_input)
-    if not ytdlp_bin:
-        log_error(f"yt-dlp binary not found: {ytdlp_input}", "ytdlp_missing")
+    # Find working yt-dlp command
+    ytdlp_cmd = find_ytdlp_command(ytdlp_input)
+    log_debug(f"Using yt-dlp command: {' '.join(ytdlp_cmd)}")
 
     # Verify yt-dlp works
-    return_code, stdout, stderr = run_ytdlp([ytdlp_bin, '--version'], timeout=15)
+    return_code, stdout, stderr = run_ytdlp(ytdlp_cmd, ['--version'], timeout=15)
     if return_code != 0:
         log_error(f"yt-dlp failed: {stderr[:200]}", "ytdlp_crashed")
     log_debug(f"yt-dlp version: {stdout.strip()}")
@@ -904,7 +929,7 @@ def main():
         cookies_tried += 1
         
         result, error_msg, error_type, should_retry = try_download(
-            url, download_path, cookie_path, ytdlp_bin, idx
+            url, download_path, cookie_path, ytdlp_cmd, idx
         )
 
         if result:
@@ -938,7 +963,7 @@ def main():
     debug_info = {
         "cookies_tried": cookies_tried,
         "all_errors": all_errors,
-        "ytdlp_bin": ytdlp_bin,
+        "ytdlp_cmd": ' '.join(ytdlp_cmd),
         "has_requests": HAS_REQUESTS
     }
 

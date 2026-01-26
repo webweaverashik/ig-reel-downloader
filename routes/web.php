@@ -37,96 +37,102 @@ Route::get('/api/instagram/cookie-status', [InstagramDownloaderController::class
 // Quick test endpoint - runs Python directly to verify execution
 Route::get('/api/instagram/quick-test', function () {
     clearstatcache();
-
-    $python     = env('PYTHON_PATH', '/usr/bin/python3');
-    $ytdlp      = env('YTDLP_PATH', '/usr/local/bin/yt-dlp');
-    $script     = realpath(base_path('python_worker/instagram_fetch.py'));
+    
+    $python = env('PYTHON_PATH', '/usr/bin/python3');
+    $ytdlp = env('YTDLP_PATH', '/usr/local/bin/yt-dlp');
+    $script = realpath(base_path('python_worker/instagram_fetch.py'));
     $cookiesDir = realpath(base_path('python_worker/cookies'));
-
+    
     $results = [
         'timestamp' => now()->toIso8601String(),
-        'paths'     => [
-            'python'      => $python,
-            'ytdlp'       => $ytdlp,
-            'script'      => $script,
+        'paths' => [
+            'python' => $python,
+            'ytdlp' => $ytdlp,
+            'ytdlp_is_dir' => is_dir($ytdlp),
+            'ytdlp_is_file' => is_file($ytdlp),
+            'script' => $script,
             'cookies_dir' => $cookiesDir,
         ],
-        'tests'     => [],
+        'tests' => [],
     ];
-
+    
     // Test 1: Python works
-    $cmd                        = escapeshellarg($python) . " --version 2>&1";
+    $cmd = escapeshellarg($python) . " --version 2>&1";
     $results['tests']['python'] = [
         'command' => $cmd,
-        'output'  => trim(shell_exec($cmd)),
+        'output' => trim(shell_exec($cmd)),
     ];
-
-    // Test 2: yt-dlp works
-    $cmd                       = escapeshellarg($ytdlp) . " --version 2>&1";
-    $results['tests']['ytdlp'] = [
+    
+    // Test 2: yt-dlp as module (recommended approach)
+    $cmd = escapeshellarg($python) . " -m yt_dlp --version 2>&1";
+    $results['tests']['ytdlp_module'] = [
         'command' => $cmd,
-        'output'  => trim(shell_exec($cmd)),
+        'output' => trim(shell_exec($cmd)),
     ];
-
-    // Test 3: Cookie files
+    
+    // Test 3: yt-dlp binary (may fail if it's a directory)
+    $cmd = escapeshellarg($ytdlp) . " --version 2>&1";
+    $results['tests']['ytdlp_binary'] = [
+        'command' => $cmd,
+        'output' => trim(shell_exec($cmd)),
+    ];
+    
+    // Test 4: Cookie files
     $cookies = [];
     if ($cookiesDir && is_dir($cookiesDir)) {
         foreach (glob($cookiesDir . '/*.txt') as $file) {
             clearstatcache(true, $file);
             $cookies[] = [
-                'name'     => basename($file),
-                'path'     => realpath($file),
-                'size'     => filesize($file),
+                'name' => basename($file),
+                'path' => realpath($file),
+                'size' => filesize($file),
                 'readable' => is_readable($file),
             ];
         }
     }
     $results['tests']['cookies'] = $cookies;
-
-    // Test 4: Run the Python script with --help or simple test
-    $testUrl          = "https://www.instagram.com/reel/DTqYuzMkvNO/";
+    
+    // Test 5: Run the Python script with a test URL
+    $testUrl = "https://www.instagram.com/reel/DTqYuzMkvNO/";
     $testDownloadPath = storage_path('app/downloads/quick-test-' . time());
     @mkdir($testDownloadPath, 0755, true);
-
-    $cookieFiles = array_map(function ($c) {return $c['path'];}, array_filter($cookies, function ($c) {return $c['readable'] && $c['size'] > 50;}));
+    
+    $cookieFiles = array_map(function($c) { return $c['path']; }, array_filter($cookies, function($c) { return $c['readable'] && $c['size'] > 50; }));
     $cookiesJson = json_encode(array_values($cookieFiles));
-
+    
+    // Pass empty string for yt-dlp path - let Python figure it out
     $cmd = sprintf(
-        'cd %s && HOME=/tmp %s %s %s %s %s %s 2>&1',
+        'cd %s && HOME=/tmp %s %s %s %s %s "" 2>&1',
         escapeshellarg(dirname($script)),
         escapeshellarg($python),
         escapeshellarg($script),
         escapeshellarg($testUrl),
         escapeshellarg($testDownloadPath),
-        escapeshellarg($cookiesJson),
-        escapeshellarg($ytdlp)
+        escapeshellarg($cookiesJson)
     );
-
+    
     $output = shell_exec($cmd);
-
+    
     $results['tests']['script_execution'] = [
-        'command'       => $cmd,
+        'command' => $cmd,
         'output_length' => strlen($output ?? ''),
-        'output'        => substr($output ?? '', 0, 2000),
+        'output' => substr($output ?? '', 0, 3000),
     ];
-
+    
     // Parse JSON from output
     $jsonOutput = null;
     foreach (preg_split("/\r\n|\r|\n/", $output ?? '') as $line) {
         $line = trim($line);
-        if (empty($line)) {
-            continue;
-        }
-
+        if (empty($line)) continue;
         $decoded = json_decode($line, true);
         if ($decoded !== null && (isset($decoded['success']) || isset($decoded['error']))) {
             $jsonOutput = $decoded;
             break;
         }
     }
-
+    
     $results['tests']['parsed_json'] = $jsonOutput;
-
+    
     // Check if files were downloaded
     $downloadedFiles = [];
     if (is_dir($testDownloadPath)) {
@@ -138,12 +144,12 @@ Route::get('/api/instagram/quick-test', function () {
         }
     }
     $results['tests']['downloaded_files'] = $downloadedFiles;
-
+    
     // Cleanup
     if (is_dir($testDownloadPath)) {
         array_map('unlink', glob($testDownloadPath . '/*'));
         @rmdir($testDownloadPath);
     }
-
+    
     return response()->json($results, 200, [], JSON_PRETTY_PRINT);
 });
