@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\ContactMessageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
+use App\Http\Controllers\Admin\MenuController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
@@ -53,6 +54,13 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'admin'])->group(func
     // FAQs Management
     Route::resource('faqs', FaqController::class);
     Route::post('faqs/reorder', [FaqController::class, 'reorder'])->name('faqs.reorder');
+
+    // Menus Management
+    Route::resource('menus', MenuController::class);
+    Route::post('menus/{menu}/items', [MenuController::class, 'addItem'])->name('menus.items.add');
+    Route::put('menus/items/{item}', [MenuController::class, 'updateItem'])->name('menus.items.update');
+    Route::delete('menus/items/{item}', [MenuController::class, 'deleteItem'])->name('menus.items.delete');
+    Route::post('menus/{menu}/reorder', [MenuController::class, 'reorderItems'])->name('menus.items.reorder');
 
     // Contact Messages
     Route::prefix('messages')->name('messages.')->group(function () {

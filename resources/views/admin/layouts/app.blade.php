@@ -96,6 +96,15 @@
                     FAQs
                 </a>
 
+                <a href="{{ route('admin.menus.index') }}"
+                    class="sidebar-link flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border-l-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {{ request()->routeIs('admin.menus*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h7" />
+                    </svg>
+                    Menus
+                </a>
+
                 <a href="{{ route('admin.messages.index') }}"
                     class="sidebar-link flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border-l-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {{ request()->routeIs('admin.messages*') ? 'active' : '' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

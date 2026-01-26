@@ -6,8 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>@yield('title', 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net')</title>
-    <meta name="description" content="@yield('description', 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.')">
+    <title>@yield('title', \App\Models\SiteSetting::get('default_meta_title', 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net'))</title>
+    <meta name="description" content="@yield('description', \App\Models\SiteSetting::get('default_meta_description', 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.'))">
+    <meta name="keywords" content="@yield('keywords', \App\Models\SiteSetting::get('default_meta_keywords', 'instagram downloader, reels downloader, ig video downloader'))">
 
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ url()->current() }}">
@@ -17,7 +18,7 @@
     <meta property="og:description" content="@yield('description', 'Download Instagram Reels, Videos, Photos in HD quality. Free & Fast.')">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:site_name" content="IGReelDownloader.net">
+    <meta property="og:site_name" content="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader.net') }}">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
@@ -277,7 +278,6 @@
             box-shadow: 0 20px 40px rgba(236, 72, 153, 0.4),
                 0 0 20px rgba(168, 85, 247, 0.3),
                 0 0 40px rgba(236, 72, 153, 0.2);
-            cursor: pointer;
         }
 
         @keyframes scrollTopFloat {
@@ -297,7 +297,6 @@
             visibility: visible !important;
         }
 
-        /* Glow pulse on hover */
         .scroll-top-float::before {
             content: '';
             position: absolute;
@@ -328,7 +327,6 @@
             }
         }
 
-        /* Ripple effect on click */
         .scroll-top-ripple {
             position: relative;
             overflow: hidden;
@@ -352,7 +350,6 @@
             height: 200%;
         }
 
-        /* Arrow icon animation on hover */
         .scroll-top-float svg {
             transition: transform 0.3s ease;
         }
@@ -395,6 +392,12 @@
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
+    @php
+        $mainMenu = \App\Models\Menu::getItems('main');
+        $footerDownloaders = \App\Models\Menu::getItems('footer-downloaders');
+        $footerLegal = \App\Models\Menu::getItems('footer-legal');
+    @endphp
+
     <!-- Header -->
     <header
         class="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 transition-colors duration-300">
@@ -410,36 +413,24 @@
                         </svg>
                     </div>
                     <span class="font-bold text-xl text-gray-900 dark:text-white hidden sm:block">
-                        IGReelDownloader<span class="text-violet-500">.net</span>
+                        {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
+                            class="text-violet-500">.net</span>
                     </span>
                 </a>
 
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex items-center space-x-1">
-                    <a href="{{ route('home') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'home' ? 'active' : '' }}">
-                        Home
-                    </a>
-                    <a href="{{ route('instagram.reels') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'reels' ? 'active' : '' }}">
-                        Reels
-                    </a>
-                    <a href="{{ route('instagram.video') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'video' ? 'active' : '' }}">
-                        Video
-                    </a>
-                    <a href="{{ route('instagram.photo') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'photo' ? 'active' : '' }}">
-                        Photo
-                    </a>
-                    <a href="{{ route('instagram.story') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'story' ? 'active' : '' }}">
-                        Story
-                    </a>
-                    <a href="{{ route('instagram.carousel') }}"
-                        class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ ($pageType ?? '') === 'carousel' ? 'active' : '' }}">
-                        Carousel
-                    </a>
+                    @forelse($mainMenu as $item)
+                        <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
+                            class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ $item['is_active'] ? 'active' : '' }}">
+                            @if (!empty($item['icon']))
+                                {{ $item['icon'] }}
+                            @endif{{ $item['title'] }}
+                        </a>
+                    @empty
+                        <a href="{{ route('home') }}"
+                            class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors">Home</a>
+                    @endforelse
                 </nav>
 
                 <!-- Right Section -->
@@ -448,14 +439,12 @@
                     <button id="themeToggle"
                         class="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                         title="Toggle theme" aria-label="Toggle dark mode">
-                        <!-- Sun icon (shown in dark mode) -->
                         <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
                             </path>
                         </svg>
-                        <!-- Moon icon (shown in light mode) -->
                         <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -491,35 +480,29 @@
                     </button>
                 </div>
                 <nav class="p-4 space-y-2">
-                    <a href="{{ route('home') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'home' ? 'active' : '' }}">
-                        🏠 Home
-                    </a>
-                    <a href="{{ route('instagram.reels') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'reels' ? 'active' : '' }}">
-                        📹 Reels Downloader
-                    </a>
-                    <a href="{{ route('instagram.video') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'video' ? 'active' : '' }}">
-                        🎬 Video Downloader
-                    </a>
-                    <a href="{{ route('instagram.photo') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'photo' ? 'active' : '' }}">
-                        📷 Photo Downloader
-                    </a>
-                    <a href="{{ route('instagram.story') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'story' ? 'active' : '' }}">
-                        ⏰ Story Downloader
-                    </a>
-                    <a href="{{ route('instagram.carousel') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'carousel' ? 'active' : '' }}">
-                        🎠 Carousel Downloader
-                    </a>
+                    @forelse($mainMenu as $item)
+                        <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
+                            class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ $item['is_active'] ? 'active' : '' }}">
+                            @if (!empty($item['icon']))
+                                {{ $item['icon'] }}
+                            @endif{{ $item['title'] }}
+                        </a>
+                    @empty
+                        <a href="{{ route('home') }}"
+                            class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">🏠
+                            Home</a>
+                    @endforelse
+
                     <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
-                    <a href="{{ route('contact') }}"
-                        class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium {{ ($pageType ?? '') === 'contact' ? 'active' : '' }}">
-                        📧 Contact Us
-                    </a>
+
+                    @foreach ($footerLegal as $item)
+                        <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
+                            class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
+                            @if (!empty($item['icon']))
+                                {{ $item['icon'] }}
+                            @endif{{ $item['title'] }}
+                        </a>
+                    @endforeach
                 </nav>
             </div>
         </div>
@@ -553,61 +536,72 @@
                                     d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                             </svg>
                         </div>
-                        <span class="font-bold text-xl text-gray-900 dark:text-white">IGReelDownloader<span
+                        <span
+                            class="font-bold text-xl text-gray-900 dark:text-white">{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
                                 class="text-violet-500">.net</span></span>
                     </div>
                     <p class="text-gray-600 dark:text-gray-400 text-sm max-w-md mb-4">
-                        The fastest and most reliable way to download Instagram Reels, Videos, Photos, Stories, and
-                        Carousel posts in HD quality. Free, fast, and no login required.
+                        {{ \App\Models\SiteSetting::get('site_description', 'The fastest and most reliable way to download Instagram Reels, Videos, Photos, Stories, and Carousel posts in HD quality. Free, fast, and no login required.') }}
                     </p>
                     <p class="text-gray-500 dark:text-gray-500 text-xs">
-                        We respect intellectual property rights. Please download content for personal use only.
+                        {{ \App\Models\SiteSetting::get('footer_text', 'We respect intellectual property rights. Please download content for personal use only.') }}
                     </p>
                 </div>
 
-                <!-- Quick Links -->
+                <!-- Downloaders Menu -->
                 <div>
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Downloaders</h4>
                     <ul class="space-y-2">
-                        <li><a href="{{ route('instagram.reels') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Reels
-                                Downloader</a></li>
-                        <li><a href="{{ route('instagram.video') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Video
-                                Downloader</a></li>
-                        <li><a href="{{ route('instagram.photo') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Photo
-                                Downloader</a></li>
-                        <li><a href="{{ route('instagram.story') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Story
-                                Downloader</a></li>
-                        <li><a href="{{ route('instagram.carousel') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Carousel
-                                Downloader</a></li>
+                        @forelse($footerDownloaders as $item)
+                            <li>
+                                <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">
+                                    {{ $item['title'] }}
+                                </a>
+                            </li>
+                        @empty
+                            <li><a href="{{ route('instagram.reels') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Reels
+                                    Downloader</a></li>
+                            <li><a href="{{ route('instagram.video') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Video
+                                    Downloader</a></li>
+                            <li><a href="{{ route('instagram.photo') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Photo
+                                    Downloader</a></li>
+                        @endforelse
                     </ul>
                 </div>
 
-                <!-- Legal -->
+                <!-- Legal Menu -->
                 <div>
                     <h4 class="font-semibold text-gray-900 dark:text-white mb-4">Legal</h4>
                     <ul class="space-y-2">
-                        <li><a href="{{ route('privacy-policy') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Privacy
-                                Policy</a></li>
-                        <li><a href="{{ route('terms') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Terms
-                                of Service</a></li>
-                        <li><a href="{{ route('contact') }}"
-                                class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Contact
-                                Us</a></li>
+                        @forelse($footerLegal as $item)
+                            <li>
+                                <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">
+                                    {{ $item['title'] }}
+                                </a>
+                            </li>
+                        @empty
+                            <li><a href="{{ route('privacy-policy') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Privacy
+                                    Policy</a></li>
+                            <li><a href="{{ route('terms') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Terms
+                                    of Service</a></li>
+                            <li><a href="{{ route('contact') }}"
+                                    class="text-gray-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 text-sm transition-colors">Contact
+                                    Us</a></li>
+                        @endforelse
                     </ul>
                 </div>
             </div>
 
             <div class="border-t border-gray-200 dark:border-gray-800 mt-8 pt-8 text-center">
                 <p class="text-gray-500 dark:text-gray-500 text-sm">
-                    © {{ date('Y') }} IGReelDownloader.net. All rights reserved. Not affiliated with Instagram or
-                    Meta.
+                    {{ \App\Models\SiteSetting::get('copyright_text', '© ' . date('Y') . ' IGReelDownloader.net. All rights reserved. Not affiliated with Instagram or Meta.') }}
                 </p>
             </div>
         </div>
@@ -619,7 +613,6 @@
             'use strict';
 
             function toggleTheme() {
-                // Add transition class for smooth color changes
                 document.documentElement.classList.add('theme-transition');
 
                 const isDark = document.documentElement.classList.contains('dark');
@@ -632,7 +625,6 @@
                     localStorage.setItem('theme', 'dark');
                 }
 
-                // Remove transition class after animation completes
                 setTimeout(() => {
                     document.documentElement.classList.remove('theme-transition');
                 }, 300);
@@ -649,13 +641,11 @@
             }
 
             function init() {
-                // Theme toggle
                 const themeToggle = document.getElementById('themeToggle');
                 if (themeToggle) {
                     themeToggle.addEventListener('click', toggleTheme);
                 }
 
-                // Mobile menu
                 const mobileMenuBtn = document.getElementById('mobileMenuBtn');
                 const mobileMenuClose = document.getElementById('mobileMenuClose');
                 const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
@@ -664,14 +654,12 @@
                 if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
                 if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
 
-                // Close mobile menu on escape key
                 document.addEventListener('keydown', function(e) {
                     if (e.key === 'Escape') {
                         closeMobileMenu();
                     }
                 });
 
-                // Scroll to Top Button
                 initScrollToTop();
             }
 
@@ -680,9 +668,7 @@
                 if (!scrollToTopBtn) return;
 
                 let isScrolling = false;
-                let scrollTimeout;
 
-                // Show/hide button based on scroll position
                 function toggleScrollButton() {
                     const scrollY = window.scrollY || window.pageYOffset;
                     const showThreshold = 300;
@@ -694,7 +680,6 @@
                     }
                 }
 
-                // Throttled scroll handler for better performance
                 function handleScroll() {
                     if (!isScrolling) {
                         window.requestAnimationFrame(function() {
@@ -705,30 +690,24 @@
                     }
                 }
 
-                // Smooth scroll to top
                 function scrollToTop() {
-                    // Add ripple class
                     scrollToTopBtn.classList.add('scroll-top-ripple');
 
-                    // Smooth scroll
                     window.scrollTo({
                         top: 0,
                         behavior: 'smooth'
                     });
 
-                    // Remove ripple class after animation
                     setTimeout(function() {
                         scrollToTopBtn.classList.remove('scroll-top-ripple');
                     }, 300);
                 }
 
-                // Event listeners
                 window.addEventListener('scroll', handleScroll, {
                     passive: true
                 });
                 scrollToTopBtn.addEventListener('click', scrollToTop);
 
-                // Initial check
                 toggleScrollButton();
             }
 
