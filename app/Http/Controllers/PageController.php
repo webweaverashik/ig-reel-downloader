@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\ContactMessage;
@@ -17,14 +16,14 @@ class PageController extends Controller
     public function privacyPolicy()
     {
         $page = Page::where('slug', 'privacy-policy')->first();
-        
-        if ($page && !$page->is_active) {
+
+        if ($page && ! $page->is_active) {
             return redirect()->route('home');
         }
-        
+
         return view('privacy-policy', [
             'pageType' => 'privacy-policy',
-            'page' => $page,
+            'page'     => $page,
         ]);
     }
 
@@ -34,14 +33,14 @@ class PageController extends Controller
     public function terms()
     {
         $page = Page::where('slug', 'terms')->first();
-        
-        if ($page && !$page->is_active) {
+
+        if ($page && ! $page->is_active) {
             return redirect()->route('home');
         }
-        
+
         return view('terms', [
             'pageType' => 'terms',
-            'page' => $page,
+            'page'     => $page,
         ]);
     }
 
@@ -51,13 +50,13 @@ class PageController extends Controller
     public function contact()
     {
         return view('contact', [
-            'pageType' => 'contact',
-            'contactEmail' => SiteSetting::get('contact_email', 'support@igreeldownloader.net'),
-            'dmcaEmail' => SiteSetting::get('dmca_email', 'dmca@igreeldownloader.net'),
-            'privacyEmail' => SiteSetting::get('privacy_email', 'privacy@igreeldownloader.net'),
+            'pageType'            => 'contact',
+            'contactEmail'        => SiteSetting::get('contact_email', 'support@igreeldownloader.net'),
+            'dmcaEmail'           => SiteSetting::get('dmca_email', 'dmca@igreeldownloader.net'),
+            'privacyEmail'        => SiteSetting::get('privacy_email', 'privacy@igreeldownloader.net'),
             'responseTimeGeneral' => SiteSetting::get('response_time_general', '24-48 hours'),
             'responseTimeSupport' => SiteSetting::get('response_time_support', '1-3 days'),
-            'responseTimeDmca' => SiteSetting::get('response_time_dmca', '3-5 days'),
+            'responseTimeDmca'    => SiteSetting::get('response_time_dmca', '3-5 days'),
         ]);
     }
 
@@ -69,19 +68,19 @@ class PageController extends Controller
         try {
             // Validate the request
             $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:100',
-                'email' => 'required|email|max:255',
+                'name'    => 'required|string|max:100',
+                'email'   => 'required|email|max:255',
                 'subject' => 'required|string|max:50',
-                'url' => 'nullable|url|max:500',
+                'url'     => 'nullable|url|max:500',
                 'message' => 'required|string|min:10|max:5000',
                 'consent' => 'required|accepted',
             ], [
-                'name.required' => 'Please enter your name.',
-                'email.required' => 'Please enter your email address.',
-                'email.email' => 'Please enter a valid email address.',
+                'name.required'    => 'Please enter your name.',
+                'email.required'   => 'Please enter your email address.',
+                'email.email'      => 'Please enter a valid email address.',
                 'subject.required' => 'Please select a subject.',
                 'message.required' => 'Please enter your message.',
-                'message.min' => 'Your message must be at least 10 characters.',
+                'message.min'      => 'Your message must be at least 10 characters.',
                 'consent.required' => 'You must agree to the privacy policy.',
                 'consent.accepted' => 'You must agree to the privacy policy.',
             ]);
@@ -90,7 +89,7 @@ class PageController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors(),
+                    'errors'  => $validator->errors(),
                 ], 422);
             }
 
@@ -98,20 +97,20 @@ class PageController extends Controller
 
             // Store in database
             $contactMessage = ContactMessage::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'subject' => $validated['subject'],
-                'url' => $validated['url'] ?? null,
-                'message' => $validated['message'],
+                'name'       => $validated['name'],
+                'email'      => $validated['email'],
+                'subject'    => $validated['subject'],
+                'url'        => $validated['url'] ?? null,
+                'message'    => $validated['message'],
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
-                'status' => 'new',
+                'status'     => 'new',
             ]);
 
             Log::info('Contact form submission saved', [
-                'id' => $contactMessage->id,
-                'name' => $validated['name'],
-                'email' => $validated['email'],
+                'id'      => $contactMessage->id,
+                'name'    => $validated['name'],
+                'email'   => $validated['email'],
                 'subject' => $validated['subject'],
             ]);
 

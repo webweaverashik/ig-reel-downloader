@@ -22,6 +22,35 @@ class MenuItem extends Model
     ];
 
     /**
+     * Boot method to register model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Clear menu cache when menu item is created
+        static::created(function ($item) {
+            if ($item->menu) {
+                Menu::clearCache($item->menu->slug);
+            }
+        });
+
+        // Clear menu cache when menu item is updated
+        static::updated(function ($item) {
+            if ($item->menu) {
+                Menu::clearCache($item->menu->slug);
+            }
+        });
+
+        // Clear menu cache when menu item is deleted
+        static::deleted(function ($item) {
+            if ($item->menu) {
+                Menu::clearCache($item->menu->slug);
+            }
+        });
+    }
+
+    /**
      * Get the menu this item belongs to
      */
     public function menu(): BelongsTo

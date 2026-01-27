@@ -43,6 +43,8 @@ class MenuController extends Controller
         $validated['is_active'] = $request->boolean('is_active');
 
         Menu::create($validated);
+
+        // Clear all menu caches
         Menu::clearCache();
 
         return redirect()->route('admin.menus.index')->with('success', 'Menu created successfully.');
@@ -77,7 +79,11 @@ class MenuController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active');
 
+        $oldSlug = $menu->slug;
         $menu->update($validated);
+
+        // Clear cache for both old and new slugs
+        Menu::clearCache($oldSlug);
         Menu::clearCache($menu->slug);
 
         return redirect()->route('admin.menus.index')->with('success', 'Menu updated successfully.');
@@ -97,6 +103,8 @@ class MenuController extends Controller
 
         $slug = $menu->slug;
         $menu->delete();
+
+        // Clear cache
         Menu::clearCache($slug);
 
         return back()->with('success', 'Menu deleted successfully.');
@@ -126,6 +134,8 @@ class MenuController extends Controller
         }
 
         MenuItem::create($validated);
+
+        // Clear menu cache
         Menu::clearCache($menu->slug);
 
         return back()->with('success', 'Menu item added successfully.');
@@ -152,8 +162,11 @@ class MenuController extends Controller
             $validated['url'] = null;
         }
 
+        $menuSlug = $item->menu->slug;
         $item->update($validated);
-        Menu::clearCache($item->menu->slug);
+
+        // Clear menu cache
+        Menu::clearCache($menuSlug);
 
         return back()->with('success', 'Menu item updated successfully.');
     }
@@ -165,6 +178,8 @@ class MenuController extends Controller
     {
         $menuSlug = $item->menu->slug;
         $item->delete();
+
+        // Clear menu cache
         Menu::clearCache($menuSlug);
 
         return back()->with('success', 'Menu item deleted successfully.');
@@ -184,6 +199,7 @@ class MenuController extends Controller
             MenuItem::where('id', $itemId)->update(['order' => $order]);
         }
 
+        // Clear menu cache
         Menu::clearCache($menu->slug);
 
         return response()->json(['success' => true]);

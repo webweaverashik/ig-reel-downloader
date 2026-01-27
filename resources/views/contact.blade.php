@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('title', 'Contact Us - IGReelDownloader.net')
-@section('description', 'Get in touch with IGReelDownloader.net. We are here to help with any questions, feedback, or
+@section('description',
+    'Get in touch with IGReelDownloader.net. We are here to help with any questions, feedback, or
     support requests.')
 
 @section('content')

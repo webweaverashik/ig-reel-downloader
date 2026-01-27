@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -39,11 +38,11 @@ class Menu extends Model
     }
 
     /**
-     * Get menu by slug with caching
+     * Get menu by slug with caching (short cache time for quick updates)
      */
     public static function getBySlug(string $slug): ?self
     {
-        return Cache::remember("menu_{$slug}", 3600, function () use ($slug) {
+        return Cache::remember("menu_{$slug}", 60, function () use ($slug) {
             return static::where('slug', $slug)
                 ->where('is_active', true)
                 ->with(['activeItems.page'])
@@ -57,25 +56,25 @@ class Menu extends Model
     public static function getItems(string $slug): array
     {
         $menu = static::getBySlug($slug);
-        
-        if (!$menu) {
+
+        if (! $menu) {
             return [];
         }
 
         return $menu->activeItems
             ->filter(function ($item) {
                 // If item is linked to a page, ensure the page is active
-                if ($item->page && !$item->page->is_active) {
+                if ($item->page && ! $item->page->is_active) {
                     return false;
                 }
                 return true;
             })
             ->map(function ($item) {
                 return [
-                    'title' => $item->title,
-                    'url' => $item->getUrl(),
-                    'icon' => $item->icon,
-                    'target' => $item->target,
+                    'title'     => $item->title,
+                    'url'       => $item->getUrl(),
+                    'icon'      => $item->icon,
+                    'target'    => $item->target,
                     'is_active' => $item->isCurrentPage(),
                 ];
             })
@@ -91,10 +90,28 @@ class Menu extends Model
         if ($slug) {
             Cache::forget("menu_{$slug}");
         } else {
-            $menus = static::all();
-            foreach ($menus as $menu) {
-                Cache::forget("menu_{$menu->slug}");
-            }
+            // Clear all known menu caches
+            static::clearAllCache();
+        }
+    }
+
+    /**
+     * Clear all menu caches
+     */
+    public static function clearAllCache(): void
+    {
+        $slugs = ['main', 'footer-downloaders', 'footer-legal'];
+
+        // Also get all menu slugs from database
+        try {
+            $dbSlugs = static::pluck('slug')->toArray();
+            $slugs   = array_unique(array_merge($slugs, $dbSlugs));
+        } catch (\Exception $e) {
+            // Database might not be available
+        }
+
+        foreach ($slugs as $slug) {
+            Cache::forget("menu_{$slug}");
         }
     }
 }
