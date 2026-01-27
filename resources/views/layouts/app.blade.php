@@ -20,6 +20,9 @@
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:site_name" content="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader.net') }}">
 
+    <!-- Google Verification -->
+    <meta name="google-site-verification" content="HLm7mAoZRSn3hThxLNb4XWm_Qu4g5meVXmyoZxzP_Dg" />
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('title', 'IG Reel Downloader')">
