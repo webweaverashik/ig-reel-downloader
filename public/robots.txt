@@ -1,2 +1,42 @@
+# robots.txt for IGReelDownloader.net
+# https://igreeldownloader.net
+
 User-agent: *
-Disallow:
+
+# Allow all public pages
+Allow: /
+
+# Disallow admin panel
+Disallow: /admin
+Disallow: /admin/
+
+# Disallow API endpoints
+Disallow: /api/
+Disallow: /api
+
+# Disallow storage and private files
+Disallow: /storage/
+Disallow: /storage
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /register
+Disallow: /password/
+Disallow: /logout
+
+# Disallow JSON and config files
+Disallow: /*.json$
+Disallow: /*.xml$
+Disallow: /web.config
+
+# Disallow common Laravel paths
+Disallow: /sanctum/
+Disallow: /telescope/
+Disallow: /horizon/
+Disallow: /_debugbar/
+
+# Crawl delay (optional - be nice to your server)
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://igreeldownloader.net/sitemap.xml

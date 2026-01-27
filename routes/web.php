@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\InstagramDownloaderController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -12,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 | IGReelDownloader.net - Instagram Downloader Routes
 |
 */
+
+// Sitemap
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // Home Page - Landing Page
 Route::get('/', [InstagramDownloaderController::class, 'home'])->name('home');
