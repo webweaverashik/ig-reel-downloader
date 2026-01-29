@@ -5,7 +5,6 @@ User-agent: *
 
 # Allow all public pages
 Allow: /
-Allow: /sitemap.xml
 
 # Disallow admin panel
 Disallow: /admin
