@@ -35,4 +35,4 @@ Disallow: /_debugbar/
 Crawl-delay: 1
 
 # Sitemap location
-Sitemap: https://igreeldownloader.net/sitemap.xml
+Sitemap: https://igreeldownloader.net/sitemap
