@@ -10,6 +10,11 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
+    <!-- Tailwind v4 Dark Mode Configuration -->
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:where(.dark, .dark *));
+    </style>
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,30 +24,38 @@
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
-    <style>
-        * {
-            font-family: 'Inter', system-ui, sans-serif;
-        }
+    <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 
-        .sidebar-link.active {
-            background-color: rgba(139, 92, 246, 0.1);
-            color: #a855f7;
-            border-left-color: #a855f7;
-        }
+    <!-- Dark Mode Script -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('admin_theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        .instagram-gradient {
-            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-        }
-    </style>
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else if (prefersDark) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
 
     @stack('styles')
 </head>
 
-<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
+<body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300">
     <div class="flex min-h-screen">
+        <!-- Mobile Sidebar Overlay -->
+        <div class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden" id="sidebarOverlay" onclick="toggleSidebar()">
+        </div>
+
         <!-- Sidebar -->
         <aside
-            class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-30 transform -translate-x-full lg:translate-x-0 transition-transform duration-300"
+            class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-50 sidebar-mobile lg:translate-x-0 lg:transform-none"
             id="sidebar">
             <!-- Logo -->
             <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
@@ -190,8 +203,8 @@
         <div class="flex-1 lg:ml-64">
             <!-- Top Bar -->
             <header
-                class="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20">
-                <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                class="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-20">
+                <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     onclick="toggleSidebar()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -201,20 +214,38 @@
 
                 <div class="flex-1"></div>
 
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    <!-- Theme Toggle -->
+                    <button id="adminThemeToggle"
+                        class="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        title="Toggle theme">
+                        <svg id="adminSunIcon" class="w-5 h-5 hidden dark:block" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                            </path>
+                        </svg>
+                        <svg id="adminMoonIcon" class="w-5 h-5 block dark:hidden" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                            </path>
+                        </svg>
+                    </button>
+
                     <div class="text-right hidden sm:block">
                         <p class="text-sm font-medium">{{ auth()->user()->name }}</p>
                         <p class="text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}
                         </p>
                     </div>
                     <div
-                        class="w-10 h-10 instagram-gradient rounded-full flex items-center justify-center text-white font-bold">
+                        class="w-8 h-8 sm:w-10 sm:h-10 instagram-gradient rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
                         {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                     </div>
                     <form action="{{ route('admin.logout') }}" method="POST">
                         @csrf
                         <button type="submit"
-                            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-red-500"
+                            class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 hover:text-red-500 transition-colors"
                             title="Logout">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -257,17 +288,7 @@
         </div>
     </div>
 
-    <!-- Mobile Sidebar Overlay -->
-    <div class="fixed inset-0 bg-black/50 z-20 lg:hidden hidden" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-    </script>
+    <script src="{{ asset('js/admin.js') }}"></script>
 
     @stack('scripts')
 </body>
