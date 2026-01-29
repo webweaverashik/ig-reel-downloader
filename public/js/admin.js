@@ -2,16 +2,28 @@
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    sidebar.classList.toggle('open');
-    overlay.classList.toggle('hidden');
-    document.body.classList.toggle('overflow-hidden');
+    
+    if (sidebar) {
+        sidebar.classList.toggle('open');
+    }
+    
+    if (overlay) {
+        overlay.classList.toggle('hidden');
+    }
+    
+    // Toggle body scroll
+    if (sidebar && sidebar.classList.contains('open')) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
 }
 
 // Close sidebar when clicking outside on mobile
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         const sidebar = document.getElementById('sidebar');
-        if (sidebar.classList.contains('open')) {
+        if (sidebar && sidebar.classList.contains('open')) {
             toggleSidebar();
         }
     }
