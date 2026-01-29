@@ -27,7 +27,6 @@ Disallow: /logout
 
 # Disallow JSON and config files
 Disallow: /*.json$
-Disallow: /*.xml$
 Disallow: /web.config
 
 # Disallow common Laravel paths
