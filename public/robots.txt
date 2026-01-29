@@ -3,9 +3,6 @@
 
 User-agent: *
 
-# Allow all public pages
-Allow: /
-
 # Disallow admin panel
 Disallow: /admin
 Disallow: /admin/
