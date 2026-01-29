@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Sitemap
-Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap', [SitemapController::class, 'index'])->name('sitemap');
 
 // Home Page - Landing Page
 Route::get('/', [InstagramDownloaderController::class, 'home'])->name('home');
