@@ -93,7 +93,7 @@ class AdminSeeder extends Seeder
                 'subtitle'         => 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.',
                 'badge'            => '100% Free & Unlimited Downloads',
                 'placeholder'      => 'Paste Instagram URL here (Reels, Videos, Photos)...',
-                'formats'          => ['Reels', 'Videos', 'Photos', 'Stories', 'Carousel', 'HD Quality'],
+                'formats'          => ['Instagram Reels Downloader', 'Instagram Video Downloader', 'Instagram Photo Downloader', 'Instagram Story Downloader', 'Instagram Carousel Downloader', 'Instagram Highlights Downloader'],
                 'is_active'        => true,
             ],
             [
@@ -107,7 +107,7 @@ class AdminSeeder extends Seeder
                 'subtitle'         => 'Download any Instagram Reels in HD quality. Fast, free, and no login required. Save your favorite Reels instantly.',
                 'badge'            => 'Free & Unlimited Reels Downloads',
                 'placeholder'      => 'Paste Instagram Reel URL here...',
-                'formats'          => ['Reels', 'HD Quality', 'MP4 Format', 'No Watermark', 'Fast Download'],
+                'formats'          => ['Instagram Reels Downloader', 'Instagram Highlights Downloader', 'MP4 Format', 'No Watermark', 'Fast Download'],
                 'is_active'        => true,
             ],
             [
@@ -135,7 +135,7 @@ class AdminSeeder extends Seeder
                 'subtitle'         => 'Download Instagram photos in full resolution. Save profile pictures, posts, and images in original quality instantly.',
                 'badge'            => 'Free HD Photo Downloads',
                 'placeholder'      => 'Paste Instagram Photo URL here...',
-                'formats'          => ['Photos', 'Profile Pictures', 'Full Resolution', 'JPG/PNG', 'Original Size'],
+                'formats'          => ['Instagram Photo Downloader', 'Profile Pictures', 'Full Resolution', 'JPG/PNG', 'Original Size'],
                 'is_active'        => true,
             ],
             [
@@ -149,7 +149,7 @@ class AdminSeeder extends Seeder
                 'subtitle'         => 'Download Instagram Stories before they disappear. Save photos and videos from stories in HD quality anonymously.',
                 'badge'            => 'Anonymous Story Downloads',
                 'placeholder'      => 'Paste Instagram Story URL here...',
-                'formats'          => ['Stories', 'Highlights', 'Photos', 'Videos', 'Anonymous'],
+                'formats'          => ['Instagram Story Downloader', 'Highlights', 'Instagram Photo Downloader', 'Instagram Video Downloader', 'Anonymous'],
                 'is_active'        => true,
             ],
             [
@@ -163,7 +163,7 @@ class AdminSeeder extends Seeder
                 'subtitle'         => 'Download all photos and videos from Instagram carousel posts at once. Save multiple items in HD quality with one click.',
                 'badge'            => 'Bulk Carousel Downloads',
                 'placeholder'      => 'Paste Instagram Carousel URL here...',
-                'formats'          => ['Multiple Photos', 'Multiple Videos', 'Bulk Download', 'ZIP Archive', 'HD Quality'],
+                'formats'          => ['Multiple Photos', 'Multiple Videos', 'Bulk Download', 'ZIP Archive', 'Instagram Highlights Downloader'],
                 'is_active'        => true,
             ],
             [
