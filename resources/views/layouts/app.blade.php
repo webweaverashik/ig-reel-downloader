@@ -2,26 +2,6 @@
 <html lang="en" class="dark">
 
 <head>
-    <!-- Google Tag Manager -->
-    <script>
-        (function(w, d, s, l, i) {
-            w[l] = w[l] || [];
-            w[l].push({
-                'gtm.start': new Date().getTime(),
-                event: 'gtm.js'
-            });
-            var f = d.getElementsByTagName(s)[0],
-                j = d.createElement(s),
-                dl = l != 'dataLayer' ? '&l=' + l : '';
-            j.async = true;
-            j.src =
-                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
-            f.parentNode.insertBefore(j, f);
-        })(window, document, 'script', 'dataLayer', 'GTM-P89WMWVV');
-    </script>
-    <!-- End Google Tag Manager -->
-
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -44,6 +24,45 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('title', 'IG Reel Downloader')">
     <meta name="twitter:description" content="@yield('description', 'Download Instagram content easily.')">
+
+    <!-- Google Site Verification -->
+    @if ($googleSiteVerification = \App\Models\SiteSetting::get('google_site_verification'))
+        <meta name="google-site-verification" content="{{ $googleSiteVerification }}">
+    @endif
+
+    <!-- Google Analytics -->
+    @if ($googleAnalyticsId = \App\Models\SiteSetting::get('google_analytics_id'))
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $googleAnalyticsId }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag('js', new Date());
+            gtag('config', '{{ $googleAnalyticsId }}');
+        </script>
+    @endif
+
+    <!-- Google Tag Manager -->
+    @if ($gtmId = \App\Models\SiteSetting::get('google_tag_manager_id'))
+        <script>
+            (function(w, d, s, l, i) {
+                w[l] = w[l] || [];
+                w[l].push({
+                    'gtm.start': new Date().getTime(),
+                    event: 'gtm.js'
+                });
+                var f = d.getElementsByTagName(s)[0],
+                    j = d.createElement(s),
+                    dl = l != 'dataLayer' ? '&l=' + l : '';
+                j.async = true;
+                j.src =
+                    'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+                f.parentNode.insertBefore(j, f);
+            })(window, document, 'script', 'dataLayer', '{{ $gtmId }}');
+        </script>
+    @endif
 
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
@@ -87,9 +106,10 @@
 
 <body class="bg-gray-50 dark:bg-gray-950 min-h-screen transition-colors duration-300">
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P89WMWVV" height="0" width="0"
-            style="display:none;visibility:hidden"></iframe></noscript>
-    <!-- End Google Tag Manager (noscript) -->
+    @if ($gtmId = \App\Models\SiteSetting::get('google_tag_manager_id'))
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $gtmId }}" height="0"
+                width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    @endif
 
     @php
         $mainMenu = \App\Models\Menu::getItems('main');

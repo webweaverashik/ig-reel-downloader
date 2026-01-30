@@ -56,6 +56,15 @@
                         placeholder="Verification code from Google Search Console">
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium mb-2">Google Tag Manager ID</label>
+                    <input type="text" name="google_tag_manager_id"
+                        value="{{ App\Models\SiteSetting::get('google_tag_manager_id') }}"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none"
+                        placeholder="GTM-XXXXXXX">
+                    <p class="text-xs text-gray-500 mt-1">Container ID for Google Tag Manager</p>
+                </div>
+
                 <div class="pt-4 border-t border-gray-200 dark:border-gray-800">
                     <button type="submit"
                         class="instagram-gradient text-white font-medium px-6 py-2 rounded-lg hover:opacity-90 transition-opacity">

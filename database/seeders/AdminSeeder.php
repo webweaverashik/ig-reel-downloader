@@ -1,5 +1,4 @@
 <?php
-
 namespace Database\Seeders;
 
 use App\Models\Faq;
@@ -17,14 +16,14 @@ class AdminSeeder extends Seeder
     public function run(): void
     {
         $this->command->info('Creating super admin user...');
-        
+
         // Create super admin user
         User::updateOrCreate(
             ['email' => 'admin@igreeldownloader.net'],
             [
-                'name' => 'Super Admin',
-                'password' => Hash::make('admin123456'),
-                'role' => 'super_admin',
+                'name'      => 'Super Admin',
+                'password'  => Hash::make('admin123456'),
+                'role'      => 'super_admin',
                 'is_active' => true,
             ]
         );
@@ -37,7 +36,7 @@ class AdminSeeder extends Seeder
 
         $this->command->info('Creating FAQs...');
         $this->createFaqs();
-        
+
         $this->command->info('Admin seeder completed successfully!');
     }
 
@@ -57,6 +56,7 @@ class AdminSeeder extends Seeder
             ['key' => 'default_meta_keywords', 'value' => 'instagram downloader, reels downloader, ig video downloader, instagram photo downloader, story downloader', 'type' => 'textarea', 'group' => 'seo', 'label' => 'Default Meta Keywords', 'order' => 3],
             ['key' => 'google_analytics_id', 'value' => '', 'type' => 'text', 'group' => 'seo', 'label' => 'Google Analytics ID', 'order' => 4],
             ['key' => 'google_site_verification', 'value' => '', 'type' => 'text', 'group' => 'seo', 'label' => 'Google Site Verification', 'order' => 5],
+            ['key' => 'google_tag_manager_id', 'value' => '', 'type' => 'text', 'group' => 'seo', 'label' => 'Google Tag Manager ID', 'order' => 6],
 
             // Contact Settings
             ['key' => 'contact_email', 'value' => 'support@igreeldownloader.net', 'type' => 'text', 'group' => 'contact', 'label' => 'Contact Email', 'order' => 1],
@@ -79,7 +79,7 @@ class AdminSeeder extends Seeder
                 $setting
             );
         }
-        
+
         $this->command->info('  - Created ' . count($settings) . ' settings');
     }
 
@@ -87,118 +87,118 @@ class AdminSeeder extends Seeder
     {
         $pages = [
             [
-                'slug' => 'home',
-                'title' => 'IG Reel Downloader',
-                'meta_title' => 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net',
+                'slug'             => 'home',
+                'title'            => 'IG Reel Downloader',
+                'meta_title'       => 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net',
                 'meta_description' => 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.',
-                'meta_keywords' => 'instagram downloader, reels downloader, ig downloader, free instagram downloader',
-                'hero_title' => 'IG Reel Downloader',
-                'hero_highlight' => 'Best Instagram Downloader',
-                'subtitle' => 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.',
-                'badge' => '100% Free & Unlimited Downloads',
-                'placeholder' => 'Paste Instagram URL here (Reels, Videos, Photos)...',
-                'formats' => ['Instagram Reels Downloader', 'Instagram Video Downloader', 'Instagram Photo Downloader', 'Instagram Story Downloader', 'Instagram Carousel Downloader', 'Instagram Highlights Downloader'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram downloader, reels downloader, ig downloader, free instagram downloader',
+                'hero_title'       => 'IG Reel Downloader',
+                'hero_highlight'   => 'Best Instagram Downloader',
+                'subtitle'         => 'With IG Reel Downloader, download any reels, videos and photos from Instagram easily. Free, fast, and no login required.',
+                'badge'            => '100% Free & Unlimited Downloads',
+                'placeholder'      => 'Paste Instagram URL here (Reels, Videos, Photos)...',
+                'formats'          => ['Instagram Reels Downloader', 'Instagram Video Downloader', 'Instagram Photo Downloader', 'Instagram Story Downloader', 'Instagram Carousel Downloader', 'Instagram Highlights Downloader'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'reels',
-                'title' => 'Instagram Reels Downloader',
-                'meta_title' => 'Instagram Reels Downloader - Download Reels in HD | IGReelDownloader.net',
+                'slug'             => 'reels',
+                'title'            => 'Instagram Reels Downloader',
+                'meta_title'       => 'Instagram Reels Downloader - Download Reels in HD | IGReelDownloader.net',
                 'meta_description' => 'Download Instagram Reels in HD quality. Free, fast, and no login required. Save your favorite Reels instantly with IG Reel Downloader.',
-                'meta_keywords' => 'instagram reels downloader, download reels, ig reels saver, reels video download',
-                'hero_title' => 'Instagram Reels Downloader',
-                'hero_highlight' => 'Download Reels in HD',
-                'subtitle' => 'Download any Instagram Reels in HD quality. Fast, free, and no login required. Save your favorite Reels instantly.',
-                'badge' => 'Free & Unlimited Reels Downloads',
-                'placeholder' => 'Paste Instagram Reel URL here...',
-                'formats' => ['Reels', 'HD Quality', 'MP4 Format', 'No Watermark', 'Fast Download'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram reels downloader, download reels, ig reels saver, reels video download',
+                'hero_title'       => 'Instagram Reels Downloader',
+                'hero_highlight'   => 'Download Reels in HD',
+                'subtitle'         => 'Download any Instagram Reels in HD quality. Fast, free, and no login required. Save your favorite Reels instantly.',
+                'badge'            => 'Free & Unlimited Reels Downloads',
+                'placeholder'      => 'Paste Instagram Reel URL here...',
+                'formats'          => ['HD Video', 'MP4 Format', 'No Watermark', 'Fast Download', 'Original Audio'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'video',
-                'title' => 'Instagram Video Downloader',
-                'meta_title' => 'Instagram Video Downloader - Download IG Videos in HD | IGReelDownloader.net',
+                'slug'             => 'video',
+                'title'            => 'Instagram Video Downloader',
+                'meta_title'       => 'Instagram Video Downloader - Download IG Videos in HD | IGReelDownloader.net',
                 'meta_description' => 'Download Instagram Videos in HD quality. Free, fast, and works on all devices. Save IGTV and video posts instantly.',
-                'meta_keywords' => 'instagram video downloader, download ig video, igtv downloader, instagram video saver',
-                'hero_title' => 'Instagram Video Downloader',
-                'hero_highlight' => 'Download Videos in HD',
-                'subtitle' => 'Download any Instagram video in original HD quality. Fast, free, and works on all devices. Save IGTV and video posts instantly.',
-                'badge' => 'Free HD Video Downloads',
-                'placeholder' => 'Paste Instagram Video URL here...',
-                'formats' => ['IGTV', 'Video Posts', 'HD 1080p', 'MP4 Format', 'Original Quality'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram video downloader, download ig video, igtv downloader, instagram video saver',
+                'hero_title'       => 'Instagram Video Downloader',
+                'hero_highlight'   => 'Download Videos in HD',
+                'subtitle'         => 'Download any Instagram video in original HD quality. Fast, free, and works on all devices. Save IGTV and video posts instantly.',
+                'badge'            => 'Free HD Video Downloads',
+                'placeholder'      => 'Paste Instagram Video URL here...',
+                'formats'          => ['IGTV Support', 'Video Feed', 'HD 1080p', 'MP4 Files', 'High Bitrate'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'photo',
-                'title' => 'Instagram Photo Downloader',
-                'meta_title' => 'Instagram Photo Downloader - Download IG Photos in HD | IGReelDownloader.net',
+                'slug'             => 'photo',
+                'title'            => 'Instagram Photo Downloader',
+                'meta_title'       => 'Instagram Photo Downloader - Download IG Photos in HD | IGReelDownloader.net',
                 'meta_description' => 'Download Instagram photos in full resolution. Save profile pictures, posts, and images in original quality instantly.',
-                'meta_keywords' => 'instagram photo downloader, download ig photos, instagram image saver, ig picture download',
-                'hero_title' => 'Instagram Photo Downloader',
-                'hero_highlight' => 'Download Photos in HD',
-                'subtitle' => 'Download Instagram photos in full resolution. Save profile pictures, posts, and images in original quality instantly.',
-                'badge' => 'Free HD Photo Downloads',
-                'placeholder' => 'Paste Instagram Photo URL here...',
-                'formats' => ['Photos', 'Profile Pictures', 'Full Resolution', 'JPG/PNG', 'Original Size'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram photo downloader, download ig photos, instagram image saver, ig picture download',
+                'hero_title'       => 'Instagram Photo Downloader',
+                'hero_highlight'   => 'Download Photos in HD',
+                'subtitle'         => 'Download Instagram photos in full resolution. Save profile pictures, posts, and images in original quality instantly.',
+                'badge'            => 'Free HD Photo Downloads',
+                'placeholder'      => 'Paste Instagram Photo URL here...',
+                'formats'          => ['High Res JPG', 'Profile Images', 'Original Quality', 'Post Photos', 'Direct Download'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'story',
-                'title' => 'Instagram Story Downloader',
-                'meta_title' => 'Instagram Story Downloader - Download IG Stories | IGReelDownloader.net',
+                'slug'             => 'story',
+                'title'            => 'Instagram Story Downloader',
+                'meta_title'       => 'Instagram Story Downloader - Download IG Stories | IGReelDownloader.net',
                 'meta_description' => 'Download Instagram Stories before they disappear. Save photos and videos from stories in HD quality anonymously.',
-                'meta_keywords' => 'instagram story downloader, download ig stories, story saver, anonymous story viewer',
-                'hero_title' => 'Instagram Story Downloader',
-                'hero_highlight' => 'Download Stories Anonymously',
-                'subtitle' => 'Download Instagram Stories before they disappear. Save photos and videos from stories in HD quality anonymously.',
-                'badge' => 'Anonymous Story Downloads',
-                'placeholder' => 'Paste Instagram Story URL here...',
-                'formats' => ['Stories', 'Highlights', 'Photos', 'Videos', 'Anonymous'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram story downloader, download ig stories, story saver, anonymous story viewer',
+                'hero_title'       => 'Instagram Story Downloader',
+                'hero_highlight'   => 'Download Stories Anonymously',
+                'subtitle'         => 'Download Instagram Stories before they disappear. Save photos and videos from stories in HD quality anonymously.',
+                'badge'            => 'Anonymous Story Downloads',
+                'placeholder'      => 'Paste Instagram Story URL here...',
+                'formats'          => ['Anonymous View', 'Expired Stories', 'Story Videos', 'HD Photos', 'Instant Save'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'carousel',
-                'title' => 'Instagram Carousel Downloader',
-                'meta_title' => 'Instagram Carousel Downloader - Download Multiple Photos/Videos | IGReelDownloader.net',
+                'slug'             => 'carousel',
+                'title'            => 'Instagram Carousel Downloader',
+                'meta_title'       => 'Instagram Carousel Downloader - Download Multiple Photos/Videos | IGReelDownloader.net',
                 'meta_description' => 'Download all photos and videos from Instagram carousel posts at once. Save multiple items in HD quality with one click.',
-                'meta_keywords' => 'instagram carousel downloader, download multiple photos, bulk download, carousel saver',
-                'hero_title' => 'Instagram Carousel Downloader',
-                'hero_highlight' => 'Download All Carousel Items',
-                'subtitle' => 'Download all photos and videos from Instagram carousel posts at once. Save multiple items in HD quality with one click.',
-                'badge' => 'Bulk Carousel Downloads',
-                'placeholder' => 'Paste Instagram Carousel URL here...',
-                'formats' => ['Multiple Photos', 'Multiple Videos', 'Bulk Download', 'ZIP Archive', 'HD Quality'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram carousel downloader, download multiple photos, bulk download, carousel saver',
+                'hero_title'       => 'Instagram Carousel Downloader',
+                'hero_highlight'   => 'Download All Carousel Items',
+                'subtitle'         => 'Download all photos and videos from Instagram carousel posts at once. Save multiple items in HD quality with one click.',
+                'badge'            => 'Bulk Carousel Downloads',
+                'placeholder'      => 'Paste Instagram Carousel URL here...',
+                'formats'          => ['Bulk Download', 'Multi-Photo', 'Video Slides', 'ZIP Archive', 'Sequential Order'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'highlights',
-                'title' => 'Instagram Highlights Downloader',
-                'meta_title' => 'Instagram Highlights Downloader - Download IG Highlights | IGReelDownloader.net',
+                'slug'             => 'highlights',
+                'title'            => 'Instagram Highlights Downloader',
+                'meta_title'       => 'Instagram Highlights Downloader - Download IG Highlights | IGReelDownloader.net',
                 'meta_description' => 'Download Instagram Highlights to your device. Save permanent stories from profiles in HD quality.',
-                'meta_keywords' => 'instagram highlights downloader, download ig highlights, story archive saver, instagram highlight viewer',
-                'hero_title' => 'Instagram Highlights Downloader',
-                'hero_highlight' => 'Download Highlights',
-                'subtitle' => 'Download Instagram Highlights easily. Save your favorite profile highlights forever.',
-                'badge' => 'Free Highlights Downloader',
-                'placeholder' => 'Paste Instagram Highlight URL here...',
-                'formats' => ['Highlights', 'Stories Archive', 'HD Quality', 'Anonymous', 'Permanent Save'],
-                'is_active' => true,
+                'meta_keywords'    => 'instagram highlights downloader, download ig highlights, story archive saver, instagram highlight viewer',
+                'hero_title'       => 'Instagram Highlights Downloader',
+                'hero_highlight'   => 'Download Highlights',
+                'subtitle'         => 'Download Instagram Highlights easily. Save your favorite profile highlights forever.',
+                'badge'            => 'Free Highlights Downloader',
+                'placeholder'      => 'Paste Instagram Highlight URL here...',
+                'formats'          => ['Story Highlights', 'Profile Archive', 'High Definition', 'Permanent Access', 'Anonymous'],
+                'is_active'        => true,
             ],
             [
-                'slug' => 'privacy-policy',
-                'title' => 'Privacy Policy',
-                'meta_title' => 'Privacy Policy - IGReelDownloader.net',
+                'slug'             => 'privacy-policy',
+                'title'            => 'Privacy Policy',
+                'meta_title'       => 'Privacy Policy - IGReelDownloader.net',
                 'meta_description' => 'Read our Privacy Policy to understand how IGReelDownloader.net collects, uses, and protects your information.',
-                'content' => '',
-                'is_active' => true,
+                'content'          => '',
+                'is_active'        => true,
             ],
             [
-                'slug' => 'terms',
-                'title' => 'Terms of Service',
-                'meta_title' => 'Terms of Service - IGReelDownloader.net',
+                'slug'             => 'terms',
+                'title'            => 'Terms of Service',
+                'meta_title'       => 'Terms of Service - IGReelDownloader.net',
                 'meta_description' => 'Read our Terms of Service to understand the rules and guidelines for using IGReelDownloader.net.',
-                'content' => '',
-                'is_active' => true,
+                'content'          => '',
+                'is_active'        => true,
             ],
         ];
 
@@ -208,7 +208,7 @@ class AdminSeeder extends Seeder
                 $page
             );
         }
-        
+
         $this->command->info('  - Created ' . count($pages) . ' pages');
     }
 
@@ -276,8 +276,8 @@ class AdminSeeder extends Seeder
         $createdCount = 0;
         foreach ($faqs as $faq) {
             // Get page_id if page exists
-            $page = Page::where('slug', $faq['page_slug'])->first();
-            $faq['page_id'] = $page?->id;
+            $page             = Page::where('slug', $faq['page_slug'])->first();
+            $faq['page_id']   = $page?->id;
             $faq['is_active'] = true;
 
             Faq::updateOrCreate(
@@ -286,7 +286,7 @@ class AdminSeeder extends Seeder
             );
             $createdCount++;
         }
-        
+
         $this->command->info('  - Created ' . $createdCount . ' FAQs');
     }
 }
