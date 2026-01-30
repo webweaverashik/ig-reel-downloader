@@ -361,6 +361,17 @@
                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Carousel</span>
                 </a>
             @endif
+
+            @if ($pageType !== 'highlights' && \App\Models\Page::where('slug', 'highlights')->where('is_active', true)->exists())
+                <a href="{{ route('instagram.highlights') }}"
+                    class="feature-card p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center group">
+                    <div
+                        class="w-10 h-10 rounded-lg bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
+                        <span class="text-lg">✨</span>
+                    </div>
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Highlights</span>
+                </a>
+            @endif
         </div>
     </div>
 </section>

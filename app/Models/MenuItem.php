@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -90,15 +91,16 @@ class MenuItem extends Model
     protected function generatePageUrl(string $slug): string
     {
         $routeMap = [
-            'home'           => 'home',
-            'reels'          => 'instagram.reels',
-            'video'          => 'instagram.video',
-            'photo'          => 'instagram.photo',
-            'story'          => 'instagram.story',
-            'carousel'       => 'instagram.carousel',
+            'home' => 'home',
+            'reels' => 'instagram.reels',
+            'video' => 'instagram.video',
+            'photo' => 'instagram.photo',
+            'story' => 'instagram.story',
+            'carousel' => 'instagram.carousel',
+            'highlights' => 'instagram.highlights',
             'privacy-policy' => 'privacy-policy',
-            'terms'          => 'terms',
-            'contact'        => 'contact',
+            'terms' => 'terms',
+            'contact' => 'contact',
         ];
 
         $routeName = $routeMap[$slug] ?? null;
@@ -116,7 +118,7 @@ class MenuItem extends Model
     public function isCurrentPage(): bool
     {
         $currentUrl = request()->url();
-        $itemUrl    = $this->getUrl();
+        $itemUrl = $this->getUrl();
 
         return $currentUrl === $itemUrl;
     }

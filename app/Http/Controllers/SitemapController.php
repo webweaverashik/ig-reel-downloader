@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Page;
@@ -12,61 +13,67 @@ class SitemapController extends Controller
     public function index(): Response
     {
         $baseUrl = config('app.url', 'https://igreeldownloader.net');
-
+        
         // Define all pages with their routes, priorities, and change frequencies
         $pages = [
             [
-                'slug'       => 'home',
-                'route'      => 'home',
-                'priority'   => '1.0',
+                'slug' => 'home',
+                'route' => 'home',
+                'priority' => '1.0',
                 'changefreq' => 'daily',
             ],
             [
-                'slug'       => 'reels',
-                'route'      => 'instagram.reels',
-                'priority'   => '0.9',
+                'slug' => 'reels',
+                'route' => 'instagram.reels',
+                'priority' => '0.9',
                 'changefreq' => 'weekly',
             ],
             [
-                'slug'       => 'video',
-                'route'      => 'instagram.video',
-                'priority'   => '0.9',
+                'slug' => 'video',
+                'route' => 'instagram.video',
+                'priority' => '0.9',
                 'changefreq' => 'weekly',
             ],
             [
-                'slug'       => 'photo',
-                'route'      => 'instagram.photo',
-                'priority'   => '0.9',
+                'slug' => 'photo',
+                'route' => 'instagram.photo',
+                'priority' => '0.9',
                 'changefreq' => 'weekly',
             ],
             [
-                'slug'       => 'story',
-                'route'      => 'instagram.story',
-                'priority'   => '0.9',
+                'slug' => 'story',
+                'route' => 'instagram.story',
+                'priority' => '0.9',
                 'changefreq' => 'weekly',
             ],
             [
-                'slug'       => 'carousel',
-                'route'      => 'instagram.carousel',
-                'priority'   => '0.9',
+                'slug' => 'carousel',
+                'route' => 'instagram.carousel',
+                'priority' => '0.9',
                 'changefreq' => 'weekly',
             ],
             [
-                'slug'       => 'privacy-policy',
-                'route'      => 'privacy-policy',
-                'priority'   => '0.6',
+                'slug' => 'highlights',
+                'route' => 'instagram.highlights',
+                'priority' => '0.9',
+                'changefreq' => 'weekly',
+            ],
+            [
+                'slug' => 'privacy-policy',
+                'route' => 'privacy-policy',
+                'priority' => '0.6',
                 'changefreq' => 'monthly',
             ],
             [
-                'slug'       => 'terms',
-                'route'      => 'terms',
-                'priority'   => '0.6',
+                'slug' => 'terms',
+                'route' => 'terms',
+                'priority' => '0.6',
                 'changefreq' => 'monthly',
             ],
             [
-                'slug'       => 'contact',
-                'route'      => 'contact',
-                'priority'   => '0.6',
+                'slug' => 'contact',
+                'route' => 'contact',
+                'priority' => '0.6',
                 'changefreq' => 'monthly',
             ],
         ];
@@ -80,21 +87,21 @@ class SitemapController extends Controller
         $alwaysInclude = ['contact'];
 
         // Build sitemap entries
-        $urls    = [];
+        $urls = [];
         $lastmod = now()->toW3cString();
 
         foreach ($pages as $page) {
             // Check if page is active (or always included, or not in database yet)
-            $isActive = in_array($page['slug'], $activePageSlugs)
-            || in_array($page['slug'], $alwaysInclude)
-            || ! Page::where('slug', $page['slug'])->exists();
+            $isActive = in_array($page['slug'], $activePageSlugs) 
+                || in_array($page['slug'], $alwaysInclude)
+                || !Page::where('slug', $page['slug'])->exists();
 
             if ($isActive && \Route::has($page['route'])) {
                 $urls[] = [
-                    'loc'        => route($page['route']),
-                    'lastmod'    => $lastmod,
+                    'loc' => route($page['route']),
+                    'lastmod' => $lastmod,
                     'changefreq' => $page['changefreq'],
-                    'priority'   => $page['priority'],
+                    'priority' => $page['priority'],
                 ];
             }
         }
@@ -112,7 +119,7 @@ class SitemapController extends Controller
      */
     private function generateXml(array $urls): string
     {
-        $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . PHP_EOL;
 
         foreach ($urls as $url) {

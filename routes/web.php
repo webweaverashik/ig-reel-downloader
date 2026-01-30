@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // Sitemap
-Route::get('/sitemap', [SitemapController::class, 'index'])->name('sitemap');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 
 // Home Page - Landing Page
 Route::get('/', [InstagramDownloaderController::class, 'home'])->name('home');
@@ -26,6 +26,7 @@ Route::get('/instagram-video-downloader', [InstagramDownloaderController::class,
 Route::get('/instagram-photo-downloader', [InstagramDownloaderController::class, 'photo'])->name('instagram.photo');
 Route::get('/instagram-story-downloader', [InstagramDownloaderController::class, 'story'])->name('instagram.story');
 Route::get('/instagram-carousel-downloader', [InstagramDownloaderController::class, 'carousel'])->name('instagram.carousel');
+Route::get('/instagram-highlights-downloader', [InstagramDownloaderController::class, 'highlights'])->name('instagram.highlights');
 
 // Static Pages
 Route::get('/privacy-policy', [PageController::class, 'privacyPolicy'])->name('privacy-policy');
@@ -49,36 +50,36 @@ Route::get('/api/instagram/cookie-status', [InstagramDownloaderController::class
 Route::get('/api/instagram/quick-test', function () {
     clearstatcache();
 
-    $python     = env('PYTHON_PATH', '/usr/bin/python3');
-    $script     = realpath(base_path('python_worker/instagram_fetch.py'));
-    $scriptDir  = dirname($script);
+    $python = env('PYTHON_PATH', '/usr/bin/python3');
+    $script = realpath(base_path('python_worker/instagram_fetch.py'));
+    $scriptDir = dirname($script);
     $cookiesDir = realpath(base_path('python_worker/cookies'));
 
     $results = [
         'timestamp' => now()->toIso8601String(),
-        'paths'     => [
-            'python'      => $python,
-            'script'      => $script,
-            'script_dir'  => $scriptDir,
+        'paths' => [
+            'python' => $python,
+            'script' => $script,
+            'script_dir' => $scriptDir,
             'cookies_dir' => $cookiesDir,
         ],
-        'tests'     => [],
+        'tests' => [],
     ];
 
     // Test 1: Python works
-    $cmd                        = escapeshellarg($python) . " --version 2>&1";
+    $cmd = escapeshellarg($python) . " --version 2>&1";
     $results['tests']['python'] = [
         'command' => $cmd,
-        'output'  => trim(shell_exec($cmd)),
+        'output' => trim(shell_exec($cmd)),
     ];
 
     // Test 2: yt-dlp command (with proper PATH)
-    $cmd                       = "cd " . escapeshellarg($scriptDir) . " && HOME=/tmp PATH=/usr/local/bin:/usr/bin:\$PATH yt-dlp --version 2>&1";
-    $ytdlpOutput               = trim(shell_exec($cmd));
+    $cmd = "cd " . escapeshellarg($scriptDir) . " && HOME=/tmp PATH=/usr/local/bin:/usr/bin:\$PATH yt-dlp --version 2>&1";
+    $ytdlpOutput = trim(shell_exec($cmd));
     $results['tests']['ytdlp'] = [
         'command' => $cmd,
-        'output'  => $ytdlpOutput,
-        'works'   => preg_match('/^\d{4}\.\d{2}\.\d{2}/', $ytdlpOutput) === 1,
+        'output' => $ytdlpOutput,
+        'works' => preg_match('/^\d{4}\.\d{2}\.\d{2}/', $ytdlpOutput) === 1,
     ];
 
     // Test 3: Cookie files
@@ -87,9 +88,9 @@ Route::get('/api/instagram/quick-test', function () {
         foreach (glob($cookiesDir . '/*.txt') as $file) {
             clearstatcache(true, $file);
             $cookies[] = [
-                'name'     => basename($file),
-                'path'     => realpath($file),
-                'size'     => filesize($file),
+                'name' => basename($file),
+                'path' => realpath($file),
+                'size' => filesize($file),
                 'readable' => is_readable($file),
             ];
         }
@@ -97,7 +98,7 @@ Route::get('/api/instagram/quick-test', function () {
     $results['tests']['cookies'] = $cookies;
 
     // Test 4: Run the Python script with a test URL (exactly like terminal)
-    $testUrl          = "https://www.instagram.com/reel/DTqYuzMkvNO/";
+    $testUrl = "https://www.instagram.com/reel/DTqYuzMkvNO/";
     $testDownloadPath = storage_path('app/downloads/quick-test-' . time());
     @mkdir($testDownloadPath, 0755, true);
 
@@ -118,9 +119,9 @@ Route::get('/api/instagram/quick-test', function () {
     $output = shell_exec($cmd);
 
     $results['tests']['script_execution'] = [
-        'command'       => $cmd,
+        'command' => $cmd,
         'output_length' => strlen($output ?? ''),
-        'output'        => substr($output ?? '', 0, 3000),
+        'output' => substr($output ?? '', 0, 3000),
     ];
 
     // Parse JSON from output
@@ -165,57 +166,57 @@ Route::get('/api/instagram/check-permissions', function () {
 
     $results = [
         'timestamp' => now()->toIso8601String(),
-        'user'      => [
-            'php_user'     => get_current_user(),
-            'process_uid'  => function_exists('posix_geteuid') ? posix_geteuid() : 'N/A',
+        'user' => [
+            'php_user' => get_current_user(),
+            'process_uid' => function_exists('posix_geteuid') ? posix_geteuid() : 'N/A',
             'process_user' => function_exists('posix_getpwuid') ? (posix_getpwuid(posix_geteuid())['name'] ?? 'unknown') : 'N/A',
         ],
-        'paths'     => [],
+        'paths' => [],
     ];
 
     // Check various paths
     $pathsToCheck = [
-        'base_path'      => base_path(),
-        'storage_path'   => storage_path(),
+        'base_path' => base_path(),
+        'storage_path' => storage_path(),
         'downloads_path' => storage_path('app/downloads'),
-        'python_worker'  => base_path('python_worker'),
-        'cookies_dir'    => base_path('python_worker/cookies'),
-        'script'         => base_path('python_worker/instagram_fetch.py'),
+        'python_worker' => base_path('python_worker'),
+        'cookies_dir' => base_path('python_worker/cookies'),
+        'script' => base_path('python_worker/instagram_fetch.py'),
     ];
 
     foreach ($pathsToCheck as $name => $path) {
-        $exists   = file_exists($path);
+        $exists = file_exists($path);
         $readable = is_readable($path);
         $writable = is_writable($path);
         $realpath = realpath($path);
 
         $results['paths'][$name] = [
-            'path'     => $path,
+            'path' => $path,
             'realpath' => $realpath ?: 'N/A',
-            'exists'   => $exists,
+            'exists' => $exists,
             'readable' => $readable,
             'writable' => $writable,
-            'type'     => $exists ? (is_dir($path) ? 'directory' : 'file') : 'N/A',
+            'type' => $exists ? (is_dir($path) ? 'directory' : 'file') : 'N/A',
         ];
 
         if ($exists && is_file($path)) {
-            $results['paths'][$name]['size']        = filesize($path);
+            $results['paths'][$name]['size'] = filesize($path);
             $results['paths'][$name]['permissions'] = substr(sprintf('%o', fileperms($path)), -4);
         }
     }
 
     // Check cookie files
-    $cookiesDir              = base_path('python_worker/cookies');
+    $cookiesDir = base_path('python_worker/cookies');
     $results['cookie_files'] = [];
     if (is_dir($cookiesDir)) {
         foreach (glob($cookiesDir . '/*.txt') as $file) {
             $results['cookie_files'][] = [
-                'name'        => basename($file),
-                'path'        => realpath($file),
-                'size'        => filesize($file),
-                'readable'    => is_readable($file),
+                'name' => basename($file),
+                'path' => realpath($file),
+                'size' => filesize($file),
+                'readable' => is_readable($file),
                 'permissions' => substr(sprintf('%o', fileperms($file)), -4),
-                'owner'       => function_exists('posix_getpwuid') ? (posix_getpwuid(fileowner($file))['name'] ?? fileowner($file)) : fileowner($file),
+                'owner' => function_exists('posix_getpwuid') ? (posix_getpwuid(fileowner($file))['name'] ?? fileowner($file)) : fileowner($file),
             ];
         }
     }
@@ -238,39 +239,39 @@ Route::get('/api/instagram/check-permissions', function () {
     foreach ($ytdlpPaths as $path) {
         if (file_exists($path)) {
             $results['ytdlp_binaries'][] = [
-                'path'        => $path,
-                'is_file'     => is_file($path),
-                'is_dir'      => is_dir($path),
-                'executable'  => is_executable($path),
+                'path' => $path,
+                'is_file' => is_file($path),
+                'is_dir' => is_dir($path),
+                'executable' => is_executable($path),
                 'permissions' => substr(sprintf('%o', fileperms($path)), -4),
             ];
         }
     }
 
     // Try running yt-dlp as www-data
-    $cmd                   = 'cd ' . escapeshellarg(base_path('python_worker')) . ' && HOME=/tmp PATH=/usr/local/bin:/usr/bin:$PATH yt-dlp --version 2>&1';
-    $ytdlpOutput           = shell_exec($cmd);
+    $cmd = 'cd ' . escapeshellarg(base_path('python_worker')) . ' && HOME=/tmp PATH=/usr/local/bin:/usr/bin:$PATH yt-dlp --version 2>&1';
+    $ytdlpOutput = shell_exec($cmd);
     $results['ytdlp_test'] = [
         'command' => $cmd,
-        'output'  => trim($ytdlpOutput ?? ''),
-        'works'   => preg_match('/^\d{4}\.\d{2}\.\d{2}/', trim($ytdlpOutput ?? '')) === 1,
+        'output' => trim($ytdlpOutput ?? ''),
+        'works' => preg_match('/^\d{4}\.\d{2}\.\d{2}/', trim($ytdlpOutput ?? '')) === 1,
     ];
 
     // Try a simple Python test
-    $python                 = env('PYTHON_PATH', '/usr/bin/python3');
-    $cmd                    = escapeshellarg($python) . ' -c "import sys, json; print(json.dumps({\'success\': True, \'version\': sys.version}))" 2>&1';
-    $pythonOutput           = shell_exec($cmd);
+    $python = env('PYTHON_PATH', '/usr/bin/python3');
+    $cmd = escapeshellarg($python) . ' -c "import sys, json; print(json.dumps({\'success\': True, \'version\': sys.version}))" 2>&1';
+    $pythonOutput = shell_exec($cmd);
     $results['python_test'] = [
         'command' => $cmd,
-        'output'  => trim($pythonOutput ?? ''),
+        'output' => trim($pythonOutput ?? ''),
     ];
 
     // Try importing requests
-    $cmd                      = escapeshellarg($python) . ' -c "import requests; print(requests.__version__)" 2>&1';
-    $requestsOutput           = shell_exec($cmd);
+    $cmd = escapeshellarg($python) . ' -c "import requests; print(requests.__version__)" 2>&1';
+    $requestsOutput = shell_exec($cmd);
     $results['requests_test'] = [
-        'command'   => $cmd,
-        'output'    => trim($requestsOutput ?? ''),
+        'command' => $cmd,
+        'output' => trim($requestsOutput ?? ''),
         'installed' => ! str_contains($requestsOutput ?? '', 'ModuleNotFoundError'),
     ];
 
