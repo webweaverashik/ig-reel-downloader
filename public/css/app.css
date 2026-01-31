@@ -23,8 +23,15 @@
 }
 
 @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-    50% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.6); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(168, 85, 247, 0.6);
+    }
 }
 
 .float-animation {
@@ -32,8 +39,15 @@
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
 }
 
 .loader {
@@ -46,7 +60,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .skeleton {
@@ -61,8 +77,13 @@ html:not(.dark) .skeleton {
 }
 
 @keyframes skeleton-loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .fade-in {
@@ -70,8 +91,15 @@ html:not(.dark) .skeleton {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .slide-up {
@@ -79,8 +107,15 @@ html:not(.dark) .skeleton {
 }
 
 @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .line-clamp-3 {
@@ -88,16 +123,6 @@ html:not(.dark) .skeleton {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
-
-/* Mobile menu */
-.mobile-menu {
-    transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-}
-
-.mobile-menu.open {
-    transform: translateX(0);
 }
 
 /* Nav link active state */
@@ -185,23 +210,30 @@ html.theme-transition *:after {
 .scroll-top-float {
     animation: scrollTopFloat 3s ease-in-out infinite;
     cursor: pointer;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), 
-                box-shadow 0.3s ease,
-                opacity 0.3s ease,
-                visibility 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.3s ease,
+        opacity 0.3s ease,
+        visibility 0.3s ease;
 }
 
 .scroll-top-float:hover {
     animation: none;
     transform: translateY(-12px) scale(1.1);
     box-shadow: 0 20px 40px rgba(236, 72, 153, 0.4),
-                0 0 20px rgba(168, 85, 247, 0.3),
-                0 0 40px rgba(236, 72, 153, 0.2);
+        0 0 20px rgba(168, 85, 247, 0.3),
+        0 0 40px rgba(236, 72, 153, 0.2);
 }
 
 @keyframes scrollTopFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
 .scroll-top-visible {
@@ -226,8 +258,17 @@ html.theme-transition *:after {
 }
 
 @keyframes glowPulse {
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.15); opacity: 0.4; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+
+    50% {
+        transform: scale(1.15);
+        opacity: 0.4;
+    }
 }
 
 .scroll-top-ripple {
@@ -263,6 +304,81 @@ html.theme-transition *:after {
 }
 
 @keyframes arrowBounce {
-    0%, 100% { transform: translateY(-2px); }
-    50% { transform: translateY(-6px); }
+
+    0%,
+    100% {
+        transform: translateY(-2px);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+/* Mobile Menu Styles - Full Screen */
+#mobileMenu {
+    z-index: 9999 !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+}
+
+/* Shadow Overlay on the right */
+#mobileMenuOverlay {
+    z-index: 9998 !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0.4) 60%, rgba(0, 0, 0, 0.2) 100%) !important;
+}
+
+/* Full Width Sidebar */
+#mobileMenuSidebar {
+    z-index: 10000 !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 80% !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background-color: #ffffff !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    overflow-y: auto !important;
+    box-shadow: none !important;
+}
+
+/* Dark mode sidebar background */
+.dark #mobileMenuSidebar,
+html.dark #mobileMenuSidebar {
+    background-color: #111827 !important;
+}
+
+/* Sidebar header */
+#mobileMenuSidebar>div:first-child {
+    background-color: inherit;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Sidebar navigation */
+#mobileMenuSidebar nav {
+    background-color: inherit;
+    padding-bottom: 2rem;
+}
+
+/* Ensure all content is visible */
+#mobileMenuSidebar,
+#mobileMenuSidebar * {
+    opacity: 1 !important;
 }

@@ -1,6 +1,7 @@
-(function() {
+(function () {
     'use strict';
 
+    // Theme toggle functionality
     function toggleTheme() {
         document.documentElement.classList.add('theme-transition');
 
@@ -14,74 +15,155 @@
             localStorage.setItem('theme', 'dark');
         }
 
+        // Update sidebar background after theme change
         setTimeout(() => {
+            updateSidebarBackground();
             document.documentElement.classList.remove('theme-transition');
-        }, 300);
+        }, 50);
     }
 
+    // Update sidebar background based on theme
+    function updateSidebarBackground() {
+        const sidebar = document.getElementById('mobileMenuSidebar');
+        if (sidebar) {
+            const isDark = document.documentElement.classList.contains('dark');
+            sidebar.style.backgroundColor = isDark ? '#111827' : '#ffffff';
+        }
+    }
+
+    // Mobile menu open function
     function openMobileMenu() {
-        document.getElementById('mobileMenu').classList.add('open');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileMenuOverlay');
+        const sidebar = document.getElementById('mobileMenuSidebar');
+
+        // Update background color based on current theme
+        updateSidebarBackground();
+
+        if (mobileMenu) {
+            mobileMenu.classList.remove('pointer-events-none');
+            mobileMenu.classList.add('pointer-events-auto');
+        }
+
+        if (overlay) {
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100', 'pointer-events-auto');
+        }
+
+        if (sidebar) {
+            sidebar.classList.remove('-translate-x-full');
+            sidebar.classList.add('translate-x-0');
+        }
+
         document.body.style.overflow = 'hidden';
     }
 
+    // Mobile menu close function
     function closeMobileMenu() {
-        document.getElementById('mobileMenu').classList.remove('open');
+        const mobileMenu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileMenuOverlay');
+        const sidebar = document.getElementById('mobileMenuSidebar');
+
+        if (sidebar) {
+            sidebar.classList.add('-translate-x-full');
+            sidebar.classList.remove('translate-x-0');
+        }
+
+        if (overlay) {
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+            overlay.classList.remove('opacity-100', 'pointer-events-auto');
+        }
+
+        // Delay hiding the container to allow animation to complete
+        setTimeout(function () {
+            if (mobileMenu) {
+                mobileMenu.classList.add('pointer-events-none');
+                mobileMenu.classList.remove('pointer-events-auto');
+            }
+        }, 300);
+
         document.body.style.overflow = '';
     }
 
+    // Initialize all functionality
     function init() {
+        // Set initial sidebar background color
+        updateSidebarBackground();
+
+        // Theme toggle
         const themeToggle = document.getElementById('themeToggle');
         if (themeToggle) {
             themeToggle.addEventListener('click', toggleTheme);
         }
 
+        // Mobile menu
         const mobileMenuBtn = document.getElementById('mobileMenuBtn');
         const mobileMenuClose = document.getElementById('mobileMenuClose');
         const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
 
-        if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', openMobileMenu);
-        if (mobileMenuClose) mobileMenuClose.addEventListener('click', closeMobileMenu);
-        if (mobileMenuOverlay) mobileMenuOverlay.addEventListener('click', closeMobileMenu);
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openMobileMenu();
+            });
+        }
 
-        document.addEventListener('keydown', function(e) {
+        if (mobileMenuClose) {
+            mobileMenuClose.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeMobileMenu();
+            });
+        }
+
+        if (mobileMenuOverlay) {
+            mobileMenuOverlay.addEventListener('click', function (e) {
+                e.preventDefault();
+                closeMobileMenu();
+            });
+        }
+
+        // Close menu on escape key
+        document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeMobileMenu();
             }
         });
 
+        // Initialize scroll to top button
         initScrollToTop();
+
+        // Auto link Instagram text
         autoLinkInstagram();
     }
 
+    // Auto-link Instagram text
     function autoLinkInstagram() {
         const keyword = "Instagram";
         const link = "https://instagram.com";
-        // Avoid linking inside these tags to prevent breaking layout or nested links
         const forbiddenParents = new Set(['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'CODE', 'PRE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
-        
+
         const walker = document.createTreeWalker(
             document.body,
             NodeFilter.SHOW_TEXT,
             {
-                acceptNode: function(node) {
-                    // Skip if empty or doesn't contain keyword
+                acceptNode: function (node) {
                     if (!node.nodeValue || !node.nodeValue.includes(keyword)) {
                         return NodeFilter.FILTER_REJECT;
                     }
-                    
-                    // Check ancestors
+
                     let parent = node.parentNode;
                     while (parent && parent !== document.body) {
                         if (forbiddenParents.has(parent.tagName)) {
                             return NodeFilter.FILTER_REJECT;
                         }
-                        // Skip if already linked or explicitly excluded
                         if (parent.classList && (parent.classList.contains('no-autolink') || parent.closest('a'))) {
                             return NodeFilter.FILTER_REJECT;
                         }
                         parent = parent.parentNode;
                     }
-                    
+
                     return NodeFilter.FILTER_ACCEPT;
                 }
             },
@@ -97,12 +179,12 @@
         nodes.forEach(node => {
             const fragment = document.createDocumentFragment();
             const parts = node.nodeValue.split(keyword);
-            
+
             parts.forEach((part, index) => {
                 if (part) {
                     fragment.appendChild(document.createTextNode(part));
                 }
-                
+
                 if (index < parts.length - 1) {
                     const a = document.createElement('a');
                     a.href = link;
@@ -113,13 +195,14 @@
                     fragment.appendChild(a);
                 }
             });
-            
+
             if (node.parentNode) {
                 node.parentNode.replaceChild(fragment, node);
             }
         });
     }
 
+    // Scroll to top button functionality
     function initScrollToTop() {
         const scrollToTopBtn = document.getElementById('scrollToTop');
         if (!scrollToTopBtn) return;
@@ -139,7 +222,7 @@
 
         function handleScroll() {
             if (!isScrolling) {
-                window.requestAnimationFrame(function() {
+                window.requestAnimationFrame(function () {
                     toggleScrollButton();
                     isScrolling = false;
                 });
@@ -149,13 +232,13 @@
 
         function scrollToTop() {
             scrollToTopBtn.classList.add('scroll-top-ripple');
-            
+
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
 
-            setTimeout(function() {
+            setTimeout(function () {
                 scrollToTopBtn.classList.remove('scroll-top-ripple');
             }, 300);
         }
@@ -163,9 +246,11 @@
         window.addEventListener('scroll', handleScroll, { passive: true });
         scrollToTopBtn.addEventListener('click', scrollToTop);
 
+        // Initial check
         toggleScrollButton();
     }
 
+    // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
