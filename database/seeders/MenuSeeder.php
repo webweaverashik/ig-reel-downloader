@@ -114,21 +114,15 @@ class MenuSeeder extends Seeder
         ];
 
         foreach ($footerLegalItems as $item) {
-            $page = Page::where('slug', $item['page_slug'])->first();
-
-            // For contact, we might not have a page, so use custom URL
-            $pageId = $page?->id;
-            $url    = null;
-
-            if (! $pageId && $item['page_slug'] === 'contact') {
-                $url = '/contact';
-            }
+            $page = isset($item['page_slug'])
+                ? Page::where('slug', $item['page_slug'])->first()
+                : null;
 
             MenuItem::updateOrCreate(
                 ['menu_id' => $footerLegal->id, 'title' => $item['title']],
                 [
-                    'page_id'   => $pageId,
-                    'url'       => $url,
+                    'page_id'   => $page?->id,
+                    'url'       => $item['url'] ?? null,
                     'order'     => $item['order'],
                     'target'    => '_self',
                     'is_active' => true,
