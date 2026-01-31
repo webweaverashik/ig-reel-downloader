@@ -52,13 +52,13 @@ class MenuSeeder extends Seeder
 
         // Main Menu Items
         $mainMenuItems = [
-            ['title' => 'Home', 'page_slug' => 'home', 'icon' => null, 'order' => 1],
-            ['title' => 'Reels', 'page_slug' => 'reels', 'icon' => null, 'order' => 2],
-            ['title' => 'Video', 'page_slug' => 'video', 'icon' => null, 'order' => 3],
-            ['title' => 'Photo', 'page_slug' => 'photo', 'icon' => null, 'order' => 4],
-            ['title' => 'Story', 'page_slug' => 'story', 'icon' => null, 'order' => 5],
-            ['title' => 'Carousel', 'page_slug' => 'carousel', 'icon' => null, 'order' => 6],
-            ['title' => 'Highlights', 'page_slug' => 'highlights', 'icon' => null, 'order' => 7],
+            ['title' => 'Reels', 'page_slug' => 'reels', 'icon' => null, 'order' => 1],
+            ['title' => 'Video', 'page_slug' => 'video', 'icon' => null, 'order' => 2],
+            ['title' => 'Photo', 'page_slug' => 'photo', 'icon' => null, 'order' => 3],
+            ['title' => 'Story', 'page_slug' => 'story', 'icon' => null, 'order' => 4],
+            ['title' => 'Carousel', 'page_slug' => 'carousel', 'icon' => null, 'order' => 5],
+            ['title' => 'Highlights', 'page_slug' => 'highlights', 'icon' => null, 'order' => 6],
+            ['title' => 'Blog', 'page_slug' => 'blog', 'icon' => null, 'order' => 7],
         ];
 
         foreach ($mainMenuItems as $item) {
