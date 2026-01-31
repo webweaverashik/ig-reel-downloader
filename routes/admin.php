@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminAuthController;
+use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\ContactMessageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
@@ -28,7 +29,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 // Admin Protected Routes
 Route::prefix('admin')->name('admin.')->middleware(['web', 'admin'])->group(function () {
-
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard.index');
@@ -37,19 +37,20 @@ Route::prefix('admin')->name('admin.')->middleware(['web', 'admin'])->group(func
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/general', [SettingsController::class, 'general'])->name('general');
         Route::post('/general', [SettingsController::class, 'updateGeneral'])->name('general.update');
-
         Route::get('/seo', [SettingsController::class, 'seo'])->name('seo');
         Route::post('/seo', [SettingsController::class, 'updateSeo'])->name('seo.update');
-
         Route::get('/contact', [SettingsController::class, 'contact'])->name('contact');
         Route::post('/contact', [SettingsController::class, 'updateContact'])->name('contact.update');
-
         Route::get('/social', [SettingsController::class, 'social'])->name('social');
         Route::post('/social', [SettingsController::class, 'updateSocial'])->name('social.update');
     });
 
     // Pages Management
     Route::resource('pages', PageController::class);
+
+    // Blog Management
+    Route::resource('blog', BlogController::class);
+    Route::post('/blog/generate-slug', [BlogController::class, 'generateSlug'])->name('blog.generate-slug');
 
     // FAQs Management
     Route::resource('faqs', FaqController::class);

@@ -91,6 +91,9 @@
     <!-- Core CSS -->
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
+    <!-- Page-specific Styles -->
+    @stack('styles')
+
     <!-- Dark Mode Script (runs before page renders to prevent flash) -->
     <script>
         (function() {
@@ -136,6 +139,7 @@
                             $siteLogo = asset('uploads/' . $siteLogo);
                         }
                     @endphp
+
                     @if ($siteLogo)
                         <img src="{{ $siteLogo }}"
                             alt="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}"
@@ -158,8 +162,14 @@
                 <!-- Desktop Navigation -->
                 <nav class="hidden md:flex items-center space-x-1">
                     @forelse($mainMenu as $item)
+                        @php
+                            // Check if this is the blog link and we're on a blog page
+$isBlogLink = str_contains($item['url'], '/blog');
+$isOnBlogPage = request()->is('blog') || request()->is('blog/*');
+$isActive = $item['is_active'] || ($isBlogLink && $isOnBlogPage);
+                        @endphp
                         <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
-                            class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ $item['is_active'] ? 'active' : '' }}">
+                            class="nav-link relative px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-violet-600 dark:hover:text-violet-400 transition-colors {{ $isActive ? 'active' : '' }}">
                             @if (!empty($item['icon']))
                                 {{ $item['icon'] }}
                             @endif{{ $item['title'] }}
@@ -241,10 +251,16 @@
                         </svg>
                     </button>
                 </div>
+
                 <nav class="p-4 space-y-2 overflow-y-auto flex-1">
                     @forelse($mainMenu as $item)
+                        @php
+                            $isBlogLink = str_contains($item['url'], '/blog');
+                            $isOnBlogPage = request()->is('blog') || request()->is('blog/*');
+                            $isActive = $item['is_active'] || ($isBlogLink && $isOnBlogPage);
+                        @endphp
                         <a href="{{ $item['url'] }}" target="{{ $item['target'] ?? '_self' }}"
-                            class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors {{ $item['is_active'] ? 'active' : '' }}">
+                            class="mobile-nav-link block px-4 py-3 rounded-xl text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium transition-colors {{ $isActive ? 'active' : '' }}">
                             @if (!empty($item['icon']))
                                 {{ $item['icon'] }}
                             @endif{{ $item['title'] }}
@@ -379,7 +395,6 @@
 
     <!-- Core JavaScript -->
     <script src="{{ asset('js/app.js') }}"></script>
-
     @stack('scripts')
 </body>
 

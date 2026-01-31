@@ -20,9 +20,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Quill Editor (Free WYSIWYG) -->
-    <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+    <!-- Jodit Editor - Completely Free (MIT License) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.9/jodit.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jodit/3.24.9/jodit.min.js"></script>
+    
+    <!-- Custom Jodit Styles -->
+    <link rel="stylesheet" href="{{ asset('css/jodit-custom.css') }}">
 
     <!-- Favicon -->
     @php
@@ -67,8 +70,7 @@
         </div>
 
         <!-- Sidebar -->
-        <aside
-            class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-50 sidebar-mobile"
+        <aside class="fixed inset-y-0 left-0 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-50 sidebar-mobile"
             id="sidebar">
             <!-- Logo -->
             <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
@@ -111,6 +113,15 @@
                     <p class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Content</p>
                 </div>
 
+                <a href="{{ route('admin.blog.index') }}"
+                    class="sidebar-link flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border-l-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {{ request()->routeIs('admin.blog*') ? 'active' : '' }}">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    Posts
+                </a>
+
                 <a href="{{ route('admin.pages.index') }}"
                     class="sidebar-link flex items-center px-3 py-2.5 text-sm font-medium rounded-lg border-l-4 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors {{ request()->routeIs('admin.pages*') ? 'active' : '' }}">
                     <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +156,9 @@
                             d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                     Messages
-                    @php $unreadCount = \App\Models\ContactMessage::unread()->count(); @endphp
+                    @php
+                        $unreadCount = \App\Models\ContactMessage::unread()->count();
+                    @endphp
                     @if ($unreadCount > 0)
                         <span
                             class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{{ $unreadCount }}</span>
@@ -223,7 +236,8 @@
             <!-- Top Bar -->
             <header
                 class="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-20">
-                <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                <button
+                    class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                     onclick="window.toggleSidebar()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -257,10 +271,12 @@
                         <p class="text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', auth()->user()->role)) }}
                         </p>
                     </div>
+
                     <div
                         class="w-8 h-8 sm:w-10 sm:h-10 instagram-gradient rounded-full flex items-center justify-center text-white font-bold text-sm sm:text-base">
                         {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
                     </div>
+
                     <form action="{{ route('admin.logout') }}" method="POST">
                         @csrf
                         <button type="submit"
@@ -307,7 +323,11 @@
         </div>
     </div>
 
+    <!-- Admin Core JS -->
     <script src="{{ asset('js/admin.js') }}"></script>
+    
+    <!-- Jodit Init Script -->
+    <script src="{{ asset('js/jodit-init.js') }}"></script>
 
     @stack('scripts')
 </body>

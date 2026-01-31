@@ -1,5 +1,4 @@
 <?php
-
 namespace Database\Seeders;
 
 use App\Models\Menu;
@@ -20,10 +19,10 @@ class MenuSeeder extends Seeder
         $mainMenu = Menu::updateOrCreate(
             ['slug' => 'main'],
             [
-                'name' => 'Main Menu',
-                'location' => 'header',
+                'name'        => 'Main Menu',
+                'location'    => 'header',
                 'description' => 'Main navigation menu displayed in the header',
-                'is_active' => true,
+                'is_active'   => true,
             ]
         );
 
@@ -31,10 +30,10 @@ class MenuSeeder extends Seeder
         $footerDownloaders = Menu::updateOrCreate(
             ['slug' => 'footer-downloaders'],
             [
-                'name' => 'Footer Downloaders',
-                'location' => 'footer',
+                'name'        => 'Footer Downloaders',
+                'location'    => 'footer',
                 'description' => 'Downloader links displayed in the footer',
-                'is_active' => true,
+                'is_active'   => true,
             ]
         );
 
@@ -42,10 +41,10 @@ class MenuSeeder extends Seeder
         $footerLegal = Menu::updateOrCreate(
             ['slug' => 'footer-legal'],
             [
-                'name' => 'Footer Legal',
-                'location' => 'footer',
+                'name'        => 'Footer Legal',
+                'location'    => 'footer',
                 'description' => 'Legal pages displayed in the footer',
-                'is_active' => true,
+                'is_active'   => true,
             ]
         );
 
@@ -67,10 +66,10 @@ class MenuSeeder extends Seeder
             MenuItem::updateOrCreate(
                 ['menu_id' => $mainMenu->id, 'title' => $item['title']],
                 [
-                    'page_id' => $page?->id,
-                    'icon' => $item['icon'],
-                    'order' => $item['order'],
-                    'target' => '_self',
+                    'page_id'   => $page?->id,
+                    'icon'      => $item['icon'],
+                    'order'     => $item['order'],
+                    'target'    => '_self',
                     'is_active' => true,
                 ]
             );
@@ -91,9 +90,9 @@ class MenuSeeder extends Seeder
             MenuItem::updateOrCreate(
                 ['menu_id' => $footerDownloaders->id, 'title' => $item['title']],
                 [
-                    'page_id' => $page?->id,
-                    'order' => $item['order'],
-                    'target' => '_self',
+                    'page_id'   => $page?->id,
+                    'order'     => $item['order'],
+                    'target'    => '_self',
                     'is_active' => true,
                 ]
             );
@@ -108,22 +107,22 @@ class MenuSeeder extends Seeder
 
         foreach ($footerLegalItems as $item) {
             $page = Page::where('slug', $item['page_slug'])->first();
-            
+
             // For contact, we might not have a page, so use custom URL
             $pageId = $page?->id;
-            $url = null;
-            
-            if (!$pageId && $item['page_slug'] === 'contact') {
+            $url    = null;
+
+            if (! $pageId && $item['page_slug'] === 'contact') {
                 $url = '/contact';
             }
 
             MenuItem::updateOrCreate(
                 ['menu_id' => $footerLegal->id, 'title' => $item['title']],
                 [
-                    'page_id' => $pageId,
-                    'url' => $url,
-                    'order' => $item['order'],
-                    'target' => '_self',
+                    'page_id'   => $pageId,
+                    'url'       => $url,
+                    'order'     => $item['order'],
+                    'target'    => '_self',
                     'is_active' => true,
                 ]
             );

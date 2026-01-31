@@ -1,0 +1,401 @@
+/**
+ * Blog Content Styles
+ * Styles for blog post content including tables, images, and other elements
+ */
+
+/* ============================================
+   TABLE STYLES
+   ============================================ */
+
+.blog-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.95rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.blog-content table thead {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.blog-content table thead th {
+      color: #ffffff;
+      font-weight: 600;
+      text-align: left;
+      padding: 1rem 1.25rem;
+      border: none;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+}
+
+.blog-content table tbody tr {
+      background-color: #ffffff;
+      transition: background-color 0.15s ease;
+}
+
+.blog-content table tbody tr:nth-child(even) {
+      background-color: #f8fafc;
+}
+
+.blog-content table tbody tr:hover {
+      background-color: #f1f5f9;
+}
+
+.blog-content table td {
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #475569;
+      vertical-align: top;
+}
+
+.blog-content table tbody tr:last-child td {
+      border-bottom: none;
+}
+
+.blog-content table th:first-child {
+      border-top-left-radius: 0.5rem;
+}
+
+.blog-content table th:last-child {
+      border-top-right-radius: 0.5rem;
+}
+
+.blog-content table tbody tr:last-child td:first-child {
+      border-bottom-left-radius: 0.5rem;
+}
+
+.blog-content table tbody tr:last-child td:last-child {
+      border-bottom-right-radius: 0.5rem;
+}
+
+/* Table without thead - first row becomes header */
+.blog-content table:not(:has(thead)) tr:first-child {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.blog-content table:not(:has(thead)) tr:first-child td {
+      color: #ffffff;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      border-bottom: none;
+}
+
+/* Dark Mode */
+.dark .blog-content table {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark .blog-content table thead {
+      background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+}
+
+.dark .blog-content table tbody tr {
+      background-color: #1e293b;
+}
+
+.dark .blog-content table tbody tr:nth-child(even) {
+      background-color: #334155;
+}
+
+.dark .blog-content table tbody tr:hover {
+      background-color: #475569;
+}
+
+.dark .blog-content table td {
+      border-bottom-color: #475569;
+      color: #cbd5e1;
+}
+
+.dark .blog-content table:not(:has(thead)) tr:first-child {
+      background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 100%);
+}
+
+.dark .blog-content table:not(:has(thead)) tr:first-child td {
+      color: #ffffff;
+}
+
+/* ============================================
+   RESPONSIVE TABLES
+   ============================================ */
+
+@media (max-width: 768px) {
+      .blog-content table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+      }
+
+      .blog-content table thead th,
+      .blog-content table td {
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+      }
+}
+
+/* ============================================
+   IMAGES
+   ============================================ */
+
+.blog-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 0.75rem;
+      margin: 1.5rem 0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.blog-content img.aligncenter,
+.blog-content img[style*="margin-left: auto"][style*="margin-right: auto"] {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+}
+
+.blog-content img.alignleft {
+      float: left;
+      margin-right: 1.5rem;
+      margin-bottom: 1rem;
+}
+
+.blog-content img.alignright {
+      float: right;
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+.blog-content h1,
+.blog-content h2,
+.blog-content h3,
+.blog-content h4,
+.blog-content h5,
+.blog-content h6 {
+      font-weight: 700;
+      line-height: 1.3;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
+      color: #1e293b;
+}
+
+.dark .blog-content h1,
+.dark .blog-content h2,
+.dark .blog-content h3,
+.dark .blog-content h4,
+.dark .blog-content h5,
+.dark .blog-content h6 {
+      color: #f1f5f9;
+}
+
+.blog-content h1 {
+      font-size: 2.25rem;
+}
+
+.blog-content h2 {
+      font-size: 1.875rem;
+}
+
+.blog-content h3 {
+      font-size: 1.5rem;
+}
+
+.blog-content h4 {
+      font-size: 1.25rem;
+}
+
+.blog-content h5 {
+      font-size: 1.125rem;
+}
+
+.blog-content h6 {
+      font-size: 1rem;
+}
+
+.blog-content p {
+      margin-bottom: 1.25rem;
+      line-height: 1.8;
+      color: #475569;
+}
+
+.dark .blog-content p {
+      color: #cbd5e1;
+}
+
+.blog-content a {
+      color: #7c3aed;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      transition: color 0.15s ease;
+}
+
+.blog-content a:hover {
+      color: #5b21b6;
+}
+
+.dark .blog-content a {
+      color: #a78bfa;
+}
+
+.dark .blog-content a:hover {
+      color: #c4b5fd;
+}
+
+/* ============================================
+   LISTS
+   ============================================ */
+
+.blog-content ul,
+.blog-content ol {
+      margin: 1.25rem 0;
+      padding-left: 1.5rem;
+      color: #475569;
+}
+
+.dark .blog-content ul,
+.dark .blog-content ol {
+      color: #cbd5e1;
+}
+
+.blog-content ul {
+      list-style-type: disc;
+}
+
+.blog-content ol {
+      list-style-type: decimal;
+}
+
+.blog-content li {
+      margin-bottom: 0.5rem;
+      line-height: 1.7;
+}
+
+.blog-content li::marker {
+      color: #7c3aed;
+}
+
+.dark .blog-content li::marker {
+      color: #a78bfa;
+}
+
+/* ============================================
+   BLOCKQUOTES
+   ============================================ */
+
+.blog-content blockquote {
+      border-left: 4px solid #7c3aed;
+      background-color: #f8fafc;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+      border-radius: 0 0.5rem 0.5rem 0;
+      font-style: italic;
+      color: #64748b;
+}
+
+.dark .blog-content blockquote {
+      background-color: #1e293b;
+      border-left-color: #a78bfa;
+      color: #94a3b8;
+}
+
+.blog-content blockquote p:last-child {
+      margin-bottom: 0;
+}
+
+/* ============================================
+   CODE
+   ============================================ */
+
+.blog-content code {
+      background-color: #f1f5f9;
+      color: #e11d48;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.875rem;
+      font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+}
+
+.dark .blog-content code {
+      background-color: #334155;
+      color: #fb7185;
+}
+
+.blog-content pre {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      padding: 1.25rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      font-size: 0.875rem;
+      line-height: 1.6;
+}
+
+.blog-content pre code {
+      background-color: transparent;
+      color: inherit;
+      padding: 0;
+      font-size: inherit;
+}
+
+/* ============================================
+   HORIZONTAL RULES
+   ============================================ */
+
+.blog-content hr {
+      border: none;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+      margin: 2rem 0;
+}
+
+.dark .blog-content hr {
+      background: linear-gradient(90deg, transparent, #475569, transparent);
+}
+
+/* ============================================
+   VIDEOS & EMBEDS
+   ============================================ */
+
+.blog-content iframe,
+.blog-content video {
+      max-width: 100%;
+      border-radius: 0.75rem;
+      margin: 1.5rem 0;
+}
+
+.blog-content .video-container {
+      position: relative;
+      padding-bottom: 56.25%;
+      /* 16:9 */
+      height: 0;
+      overflow: hidden;
+      margin: 1.5rem 0;
+      border-radius: 0.75rem;
+}
+
+.blog-content .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+}
+
+/* ============================================
+   CLEARFIX
+   ============================================ */
+
+.blog-content::after {
+      content: "";
+      display: table;
+      clear: both;
+}

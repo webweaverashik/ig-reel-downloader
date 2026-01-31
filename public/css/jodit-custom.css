@@ -1,0 +1,172 @@
+/**
+ * Jodit Editor Custom Styles
+ * Completely free - MIT License
+ */
+
+/* Editor Container */
+.jodit-container {
+    border-radius: 0.5rem !important;
+    overflow: hidden;
+    border: 1px solid #d1d5db !important;
+}
+
+.jodit-workplace {
+    min-height: 400px !important;
+}
+
+.jodit-wysiwyg {
+    min-height: 350px !important;
+    padding: 1rem !important;
+    font-size: 16px !important;
+    line-height: 1.7 !important;
+}
+
+/* Dark Mode Support */
+.dark .jodit-container {
+    border-color: #374151 !important;
+}
+
+.dark .jodit-toolbar__box {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+.dark .jodit-toolbar-button__button {
+    color: #e5e7eb !important;
+}
+
+.dark .jodit-toolbar-button__button:hover {
+    background: #374151 !important;
+}
+
+.dark .jodit-workplace {
+    background: #111827 !important;
+}
+
+.dark .jodit-wysiwyg {
+    background: #111827 !important;
+    color: #e5e7eb !important;
+}
+
+.dark .jodit-status-bar {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #9ca3af !important;
+}
+
+.dark .jodit-popup {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+.dark .jodit-popup__content {
+    background: #1f2937 !important;
+}
+
+.dark .jodit-ui-input__input,
+.dark .jodit-ui-textarea__input {
+    background: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+}
+
+.dark .jodit-dialog {
+    background: #1f2937 !important;
+}
+
+.dark .jodit-dialog__header {
+    background: #111827 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb !important;
+}
+
+.dark .jodit-dialog__content {
+    background: #1f2937 !important;
+    color: #e5e7eb !important;
+}
+
+.dark .jodit-dialog__footer {
+    background: #1f2937 !important;
+    border-color: #374151 !important;
+}
+
+/* Table Styles in Editor */
+.jodit-wysiwyg table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+}
+
+.jodit-wysiwyg table td,
+.jodit-wysiwyg table th {
+    border: 1px solid #d1d5db;
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.jodit-wysiwyg table th {
+    background: #f3f4f6;
+    font-weight: 600;
+}
+
+.dark .jodit-wysiwyg table td,
+.dark .jodit-wysiwyg table th {
+    border-color: #374151;
+}
+
+.dark .jodit-wysiwyg table th {
+    background: #1f2937;
+}
+
+/* Image Styles */
+.jodit-wysiwyg img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}
+
+/* Blockquote */
+.jodit-wysiwyg blockquote {
+    border-left: 4px solid #8b5cf6;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    font-style: italic;
+    color: #6b7280;
+}
+
+.dark .jodit-wysiwyg blockquote {
+    color: #9ca3af;
+}
+
+/* Code Blocks */
+.jodit-wysiwyg pre {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 14px;
+}
+
+.jodit-wysiwyg code {
+    background: #f3f4f6;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.875em;
+}
+
+.dark .jodit-wysiwyg code {
+    background: #374151;
+}
+
+/* Links */
+.jodit-wysiwyg a {
+    color: #8b5cf6;
+    text-decoration: underline;
+}
+
+.jodit-wysiwyg a:hover {
+    color: #7c3aed;
+}

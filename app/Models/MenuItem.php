@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -74,6 +73,10 @@ class MenuItem extends Model
     {
         // If custom URL is set, use it
         if ($this->url) {
+            // Handle relative URLs
+            if (str_starts_with($this->url, '/')) {
+                return url($this->url);
+            }
             return $this->url;
         }
 
@@ -91,16 +94,17 @@ class MenuItem extends Model
     protected function generatePageUrl(string $slug): string
     {
         $routeMap = [
-            'home' => 'home',
-            'reels' => 'instagram.reels',
-            'video' => 'instagram.video',
-            'photo' => 'instagram.photo',
-            'story' => 'instagram.story',
-            'carousel' => 'instagram.carousel',
-            'highlights' => 'instagram.highlights',
+            'home'           => 'home',
+            'reels'          => 'instagram.reels',
+            'video'          => 'instagram.video',
+            'photo'          => 'instagram.photo',
+            'story'          => 'instagram.story',
+            'carousel'       => 'instagram.carousel',
+            'highlights'     => 'instagram.highlights',
             'privacy-policy' => 'privacy-policy',
-            'terms' => 'terms',
-            'contact' => 'contact',
+            'terms'          => 'terms',
+            'contact'        => 'contact',
+            'blog'           => 'blog.index',
         ];
 
         $routeName = $routeMap[$slug] ?? null;
@@ -114,12 +118,29 @@ class MenuItem extends Model
 
     /**
      * Check if this menu item is for the current page
+     * Supports prefix matching for blog/* URLs
      */
     public function isCurrentPage(): bool
     {
-        $currentUrl = request()->url();
-        $itemUrl = $this->getUrl();
+        $currentUrl  = request()->url();
+        $currentPath = request()->path();
+        $itemUrl     = $this->getUrl();
 
-        return $currentUrl === $itemUrl;
+        // Exact match
+        if ($currentUrl === $itemUrl) {
+            return true;
+        }
+
+        // Get the path from item URL
+        $itemPath = parse_url($itemUrl, PHP_URL_PATH);
+        $itemPath = $itemPath ? ltrim($itemPath, '/') : '';
+
+        // Prefix matching for blog URLs
+        // If menu item is /blog, also match /blog/post-slug
+        if ($itemPath === 'blog' && str_starts_with($currentPath, 'blog')) {
+            return true;
+        }
+
+        return false;
     }
 }
