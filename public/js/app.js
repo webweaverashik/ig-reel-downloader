@@ -50,6 +50,74 @@
         });
 
         initScrollToTop();
+        autoLinkInstagram();
+    }
+
+    function autoLinkInstagram() {
+        const keyword = "Instagram";
+        const link = "https://instagram.com";
+        // Avoid linking inside these tags to prevent breaking layout or nested links
+        const forbiddenParents = new Set(['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'SCRIPT', 'STYLE', 'CODE', 'PRE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+        
+        const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: function(node) {
+                    // Skip if empty or doesn't contain keyword
+                    if (!node.nodeValue || !node.nodeValue.includes(keyword)) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+                    
+                    // Check ancestors
+                    let parent = node.parentNode;
+                    while (parent && parent !== document.body) {
+                        if (forbiddenParents.has(parent.tagName)) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        // Skip if already linked or explicitly excluded
+                        if (parent.classList && (parent.classList.contains('no-autolink') || parent.closest('a'))) {
+                            return NodeFilter.FILTER_REJECT;
+                        }
+                        parent = parent.parentNode;
+                    }
+                    
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            },
+            false
+        );
+
+        const nodes = [];
+        let currentNode;
+        while (currentNode = walker.nextNode()) {
+            nodes.push(currentNode);
+        }
+
+        nodes.forEach(node => {
+            const fragment = document.createDocumentFragment();
+            const parts = node.nodeValue.split(keyword);
+            
+            parts.forEach((part, index) => {
+                if (part) {
+                    fragment.appendChild(document.createTextNode(part));
+                }
+                
+                if (index < parts.length - 1) {
+                    const a = document.createElement('a');
+                    a.href = link;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                    a.textContent = keyword;
+                    a.className = 'hover:underline no-autolink inline-block';
+                    fragment.appendChild(a);
+                }
+            });
+            
+            if (node.parentNode) {
+                node.parentNode.replaceChild(fragment, node);
+            }
+        });
     }
 
     function initScrollToTop() {
