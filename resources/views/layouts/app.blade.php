@@ -79,8 +79,14 @@
         rel="stylesheet">
 
     <!-- Favicon -->
+    @php
+        $faviconUrl = \App\Models\SiteSetting::get('site_favicon');
+        if ($faviconUrl && !filter_var($faviconUrl, FILTER_VALIDATE_URL)) {
+            $faviconUrl = asset('uploads/' . $faviconUrl);
+        }
+    @endphp
     <link rel="icon" type="image/svg+xml"
-        href="{{ \App\Models\SiteSetting::get('site_favicon') ? \App\Models\SiteSetting::get('site_favicon')->getUrl() : 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%23E1306C\' rx=\'20\' width=\'100\' height=\'100\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'central\' text-anchor=\'middle\' font-size=\'50\'>📥</text></svg>' }}">
+        href="{{ $faviconUrl ?: 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%23E1306C\' rx=\'20\' width=\'100\' height=\'100\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'central\' text-anchor=\'middle\' font-size=\'50\'>📥</text></svg>' }}">
 
     <!-- Core CSS -->
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
@@ -124,8 +130,14 @@
             <div class="flex items-center justify-between h-16">
                 <!-- Logo -->
                 <a href="{{ route('home') }}" class="flex items-center space-x-2 group">
-                    @if (\App\Models\SiteSetting::get('site_logo'))
-                        <img src="{{ \App\Models\SiteSetting::get('site_logo')->getUrl() }}"
+                    @php
+                        $siteLogo = \App\Models\SiteSetting::get('site_logo');
+                        if ($siteLogo && !filter_var($siteLogo, FILTER_VALIDATE_URL)) {
+                            $siteLogo = asset('uploads/' . $siteLogo);
+                        }
+                    @endphp
+                    @if ($siteLogo)
+                        <img src="{{ $siteLogo }}"
                             alt="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}"
                             class="h-10 w-auto transform group-hover:scale-105 transition-transform">
                     @else
@@ -137,7 +149,8 @@
                             </svg>
                         </div>
                         <span class="font-bold text-xl text-gray-900 dark:text-white hidden sm:block">
-                            {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}
+                            {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
+                                class="text-violet-500">.net</span>
                         </span>
                     @endif
                 </a>
@@ -190,9 +203,11 @@
         </div>
 
         <!-- Mobile Menu -->
-        <div id="mobileMenu" class="mobile-menu fixed inset-0 z-50 md:hidden">
-            <div class="absolute inset-0 bg-black/50" id="mobileMenuOverlay"></div>
-            <div class="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-gray-900 shadow-xl">
+        <div id="mobileMenu" class="fixed inset-0 z-50 md:hidden invisible opacity-0 transition-opacity duration-300">
+            <div class="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-300"
+                id="mobileMenuOverlay"></div>
+            <div id="mobileMenuSidebar"
+                class="absolute left-0 top-0 bottom-0 w-72 bg-white dark:bg-gray-900 shadow-xl transform -translate-x-full transition-transform duration-300">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <span class="font-bold text-lg text-gray-900 dark:text-white">Menu</span>
                     <button id="mobileMenuClose" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -240,6 +255,7 @@
     <!-- Scroll to Top Button -->
     <button id="scrollToTop"
         class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full instagram-gradient text-white shadow-lg shadow-pink-500/30 flex items-center justify-center opacity-0 invisible translate-y-4 focus:outline-none focus:ring-4 focus:ring-violet-500/30 scroll-top-float scroll-top-ripple"
+        style="position: fixed !important; bottom: 1.5rem !important; right: 1.5rem !important; left: auto !important;"
         aria-label="Scroll to top" title="Scroll to top">
         <svg class="w-6 h-6 drop-shadow-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18">
@@ -254,15 +270,22 @@
                 <!-- Brand -->
                 <div class="md:col-span-2">
                     <div class="flex items-center space-x-2 mb-4">
-                        <div class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                            </svg>
-                        </div>
-                        <span
-                            class="font-bold text-xl text-gray-900 dark:text-white">{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
-                                class="text-violet-500">.net</span></span>
+                        @if ($siteLogo)
+                            <img src="{{ $siteLogo }}"
+                                alt="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}"
+                                class="h-10 w-auto">
+                        @else
+                            <div class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center">
+                                <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                                </svg>
+                            </div>
+                            <span class="font-bold text-xl text-gray-900 dark:text-white">
+                                {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
+                                    class="text-violet-500">.net</span>
+                            </span>
+                        @endif
                     </div>
                     <p class="text-gray-600 dark:text-gray-400 text-sm max-w-md mb-4">
                         {{ \App\Models\SiteSetting::get('site_description', 'The fastest and most reliable way to download Instagram Reels, Videos, Photos, Stories, and Carousel posts in HD quality. Free, fast, and no login required.') }}

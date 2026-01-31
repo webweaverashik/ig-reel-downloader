@@ -47,8 +47,10 @@ class AdminSeeder extends Seeder
             ['key' => 'site_name', 'value' => 'IGReelDownloader.net', 'type' => 'text', 'group' => 'general', 'label' => 'Site Name', 'order' => 1],
             ['key' => 'site_tagline', 'value' => 'Best Instagram Downloader', 'type' => 'text', 'group' => 'general', 'label' => 'Site Tagline', 'order' => 2],
             ['key' => 'site_description', 'value' => 'Download Instagram Reels, Videos, Photos, Stories in HD quality. Free, fast, and no login required.', 'type' => 'textarea', 'group' => 'general', 'label' => 'Site Description', 'order' => 3],
-            ['key' => 'footer_text', 'value' => 'We respect intellectual property rights. Please download content for personal use only.', 'type' => 'textarea', 'group' => 'general', 'label' => 'Footer Text', 'order' => 4],
-            ['key' => 'copyright_text', 'value' => '© ' . date('Y') . ' IGReelDownloader.net. All rights reserved. Not affiliated with Instagram or Meta.', 'type' => 'text', 'group' => 'general', 'label' => 'Copyright Text', 'order' => 5],
+            ['key' => 'site_logo', 'value' => '', 'type' => 'image', 'group' => 'general', 'label' => 'Site Logo', 'order' => 4],
+            ['key' => 'site_favicon', 'value' => '', 'type' => 'image', 'group' => 'general', 'label' => 'Site Favicon', 'order' => 5],
+            ['key' => 'footer_text', 'value' => 'We respect intellectual property rights. Please download content for personal use only.', 'type' => 'textarea', 'group' => 'general', 'label' => 'Footer Text', 'order' => 6],
+            ['key' => 'copyright_text', 'value' => '© ' . date('Y') . ' IGReelDownloader.net. All rights reserved. Not affiliated with Instagram or Meta.', 'type' => 'text', 'group' => 'general', 'label' => 'Copyright Text', 'order' => 7],
 
             // SEO Settings
             ['key' => 'default_meta_title', 'value' => 'IG Reel Downloader - Best Instagram Downloader | IGReelDownloader.net', 'type' => 'text', 'group' => 'seo', 'label' => 'Default Meta Title', 'order' => 1],

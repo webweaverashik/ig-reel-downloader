@@ -24,6 +24,17 @@
     <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 
+    <!-- Favicon -->
+    @php
+        $faviconUrl = \App\Models\SiteSetting::get('site_favicon');
+        if ($faviconUrl && !filter_var($faviconUrl, FILTER_VALIDATE_URL)) {
+            $faviconUrl = asset('uploads/' . $faviconUrl);
+        }
+    @endphp
+    <link rel="icon" type="image/svg+xml"
+        href="{{ $faviconUrl ?: 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%23E1306C\' rx=\'20\' width=\'100\' height=\'100\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'central\' text-anchor=\'middle\' font-size=\'50\'>📥</text></svg>' }}">
+
+    <!-- Admin Core CSS -->
     <link rel="stylesheet" href="{{ asset('css/admin.css') }}">
 
     <!-- Dark Mode Script -->

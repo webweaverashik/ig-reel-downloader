@@ -75,4 +75,28 @@ class SiteSetting extends Model
             Cache::forget("setting_{$setting->key}");
         }
     }
+
+    /**
+     * Check if setting is a file
+     */
+    public function isFile(): bool
+    {
+        return $this->type === 'file';
+    }
+
+    /**
+     * Get URL for file settings
+     */
+    public function getUrl(): ?string
+    {
+        if (! $this->value) {
+            return null;
+        }
+
+        if (filter_var($this->value, FILTER_VALIDATE_URL)) {
+            return $this->value;
+        }
+
+        return asset('uploads/' . $this->value);
+    }
 }
