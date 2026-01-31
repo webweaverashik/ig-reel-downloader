@@ -153,8 +153,7 @@
                             </svg>
                         </div>
                         <span class="font-bold text-xl text-gray-900 dark:text-white hidden sm:block">
-                            {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}<span
-                                class="text-violet-500">.net</span>
+                            {{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}
                         </span>
                     @endif
                 </a>
@@ -312,7 +311,7 @@ $isActive = $item['is_active'] || ($isBlogLink && $isOnBlogPage);
                         @if ($siteLogo)
                             <img src="{{ $siteLogo }}"
                                 alt="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}"
-                                class="h-10 w-auto">
+                                class="h-15 w-auto">
                         @else
                             <div class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center">
                                 <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
