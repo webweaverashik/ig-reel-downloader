@@ -58,7 +58,7 @@ class UserController extends Controller
             'email'     => 'required|email|unique:users,email',
             'password'  => ['required', 'confirmed', Password::defaults()],
             'role'      => 'required|in:user,admin,super_admin',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable',
         ]);
 
         // Only super_admin can create super_admin
@@ -66,12 +66,24 @@ class UserController extends Controller
             return back()->with('error', 'Only super admins can create super admin accounts.');
         }
 
-        $validated['password']  = Hash::make($validated['password']);
-        $validated['is_active'] = $request->boolean('is_active');
-
-        User::create($validated);
+        // Create user with explicit assignment
+        $user            = new User();
+        $user->name      = $validated['name'];
+        $user->email     = $validated['email'];
+        $user->password  = Hash::make($validated['password']);
+        $user->role      = $validated['role'];
+        $user->is_active = $request->boolean('is_active', true);
+        $user->save();
 
         return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
+    }
+
+    /**
+     * Display the specified user
+     */
+    public function show(User $user)
+    {
+        return view('admin.users.show', compact('user'));
     }
 
     /**
@@ -92,7 +104,7 @@ class UserController extends Controller
             'email'     => 'required|email|unique:users,email,' . $user->id,
             'password'  => ['nullable', 'confirmed', Password::defaults()],
             'role'      => 'required|in:user,admin,super_admin',
-            'is_active' => 'boolean',
+            'is_active' => 'nullable',
         ]);
 
         // Prevent self-demotion for super_admin
@@ -110,15 +122,17 @@ class UserController extends Controller
             return back()->with('error', 'You cannot deactivate your own account.');
         }
 
+        // Update user with explicit assignment
+        $user->name      = $validated['name'];
+        $user->email     = $validated['email'];
+        $user->role      = $validated['role'];
+        $user->is_active = $request->boolean('is_active');
+
         if (! empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+            $user->password = Hash::make($validated['password']);
         }
 
-        $validated['is_active'] = $request->boolean('is_active');
-
-        $user->update($validated);
+        $user->save();
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
     }

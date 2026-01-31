@@ -128,7 +128,7 @@
                                 </a>
                                 @if ($user->id !== auth()->id())
                                     <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="inline"
-                                        onsubmit="return confirm('Are you sure?')">
+                                        onsubmit="return confirm('Are you sure you want to delete this user?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -146,6 +146,11 @@
                     @empty
                         <tr>
                             <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                                <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
                                 No users found.
                             </td>
                         </tr>

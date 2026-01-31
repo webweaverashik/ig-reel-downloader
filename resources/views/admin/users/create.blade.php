@@ -22,7 +22,7 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Name <span class="text-red-500">*</span></label>
                     <input type="text" name="name" value="{{ old('name') }}" required
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-colors"
                         placeholder="Full Name">
                     @error('name')
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -32,18 +32,18 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Email <span class="text-red-500">*</span></label>
                     <input type="email" name="email" value="{{ old('email') }}" required
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-colors"
                         placeholder="user@example.com">
                     @error('email')
                         <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                     @enderror
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Password <span class="text-red-500">*</span></label>
                         <input type="password" name="password" required
-                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-colors"
                             placeholder="••••••••">
                         @error('password')
                             <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
@@ -53,7 +53,7 @@
                         <label class="block text-sm font-medium mb-2">Confirm Password <span
                                 class="text-red-500">*</span></label>
                         <input type="password" name="password_confirmation" required
-                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none"
+                            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-colors"
                             placeholder="••••••••">
                     </div>
                 </div>
@@ -61,7 +61,7 @@
                 <div>
                     <label class="block text-sm font-medium mb-2">Role <span class="text-red-500">*</span></label>
                     <select name="role" required
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 outline-none">
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-colors">
                         <option value="user" {{ old('role') === 'user' ? 'selected' : '' }}>User</option>
                         <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>Admin</option>
                         @if (auth()->user()->role === 'super_admin')
@@ -81,13 +81,19 @@
                         <div
                             class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-300 dark:peer-focus:ring-violet-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-violet-600">
                         </div>
-                        <span class="ml-2 text-sm">Active</span>
+                        <span class="ml-3 text-sm font-medium">Active</span>
                     </label>
 
-                    <button type="submit"
-                        class="instagram-gradient text-white font-medium px-6 py-2 rounded-lg hover:opacity-90 transition-opacity">
-                        Create User
-                    </button>
+                    <div class="flex gap-3">
+                        <a href="{{ route('admin.users.index') }}"
+                            class="px-6 py-2 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            Cancel
+                        </a>
+                        <button type="submit"
+                            class="instagram-gradient text-white font-medium px-6 py-2 rounded-lg hover:opacity-90 transition-opacity">
+                            Create User
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
