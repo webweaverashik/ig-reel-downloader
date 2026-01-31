@@ -139,7 +139,7 @@
                     @if ($siteLogo)
                         <img src="{{ $siteLogo }}"
                             alt="{{ \App\Models\SiteSetting::get('site_name', 'IGReelDownloader') }}"
-                            class="h-10 w-auto transform group-hover:scale-105 transition-transform">
+                            class="h-15 w-auto transform group-hover:scale-105 transition-transform">
                     @else
                         <div
                             class="w-10 h-10 instagram-gradient rounded-xl flex items-center justify-center transform group-hover:scale-105 transition-transform">
