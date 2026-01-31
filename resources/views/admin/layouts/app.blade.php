@@ -30,6 +30,7 @@
         if ($faviconUrl && !filter_var($faviconUrl, FILTER_VALIDATE_URL)) {
             $faviconUrl = asset('uploads/' . $faviconUrl);
         }
+        $siteName = \App\Models\SiteSetting::get('site_name', 'Admin Panel');
     @endphp
     <link rel="icon" type="image/svg+xml"
         href="{{ $faviconUrl ?: 'data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect fill=\'%23E1306C\' rx=\'20\' width=\'100\' height=\'100\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'central\' text-anchor=\'middle\' font-size=\'50\'>📥</text></svg>' }}">
@@ -61,7 +62,8 @@
 <body class="bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300">
     <div class="flex min-h-screen">
         <!-- Mobile Sidebar Overlay -->
-        <div class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden" id="sidebarOverlay" onclick="toggleSidebar()">
+        <div class="fixed inset-0 bg-black/50 z-40 lg:hidden hidden" id="sidebarOverlay"
+            onclick="window.toggleSidebar()">
         </div>
 
         <!-- Sidebar -->
@@ -71,16 +73,22 @@
             <!-- Logo -->
             <div class="h-16 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800">
                 <a href="{{ route('admin.dashboard') }}" class="flex items-center space-x-2">
-                    <div class="w-8 h-8 instagram-gradient rounded-lg flex items-center justify-center">
-                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <path
-                                d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z" />
-                        </svg>
-                    </div>
-                    <span class="font-bold text-sm dark:text-white">Admin Panel</span>
+                    @if ($faviconUrl)
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                            <img src="{{ $faviconUrl }}" alt="Site Logo" class="w-full h-full object-contain">
+                        </div>
+                    @else
+                        <div class="w-8 h-8 instagram-gradient rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z" />
+                            </svg>
+                        </div>
+                    @endif
+                    <span class="font-bold text-sm dark:text-white">{{ $siteName }}</span>
                 </a>
                 <button class="lg:hidden p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                    onclick="toggleSidebar()">
+                    onclick="window.toggleSidebar()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M6 18L18 6M6 6l12 12" />
@@ -216,7 +224,7 @@
             <header
                 class="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-3 sm:px-4 lg:px-6 sticky top-0 z-20">
                 <button class="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    onclick="toggleSidebar()">
+                    onclick="window.toggleSidebar()">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 6h16M4 12h16M4 18h16" />
