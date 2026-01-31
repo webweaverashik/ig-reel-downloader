@@ -58,15 +58,21 @@ class MenuSeeder extends Seeder
             ['title' => 'Story', 'page_slug' => 'story', 'icon' => null, 'order' => 4],
             ['title' => 'Carousel', 'page_slug' => 'carousel', 'icon' => null, 'order' => 5],
             ['title' => 'Highlights', 'page_slug' => 'highlights', 'icon' => null, 'order' => 6],
-            ['title' => 'Blog', 'page_slug' => 'blog', 'icon' => null, 'order' => 7],
+
+            // 👇 Blog (custom URL)
+            ['title' => 'Blog', 'page_slug' => null, 'icon' => null, 'order' => 7, 'url' => '/blog'],
         ];
 
         foreach ($mainMenuItems as $item) {
-            $page = Page::where('slug', $item['page_slug'])->first();
+            $page = isset($item['page_slug'])
+                ? Page::where('slug', $item['page_slug'])->first()
+                : null;
+
             MenuItem::updateOrCreate(
                 ['menu_id' => $mainMenu->id, 'title' => $item['title']],
                 [
                     'page_id'   => $page?->id,
+                    'url'       => $item['url'] ?? null,
                     'icon'      => $item['icon'],
                     'order'     => $item['order'],
                     'target'    => '_self',
@@ -103,6 +109,8 @@ class MenuSeeder extends Seeder
             ['title' => 'Privacy Policy', 'page_slug' => 'privacy-policy', 'order' => 1],
             ['title' => 'Terms of Service', 'page_slug' => 'terms', 'order' => 2],
             ['title' => 'Contact Us', 'page_slug' => 'contact', 'order' => 3],
+            // 👇 Blog (custom URL)
+            ['title' => 'Blog', 'page_slug' => null, 'order' => 4, 'url' => '/blog'],
         ];
 
         foreach ($footerLegalItems as $item) {
