@@ -264,17 +264,6 @@
                 <p class="text-gray-600 dark:text-gray-400 text-sm">Download Instagram highlights from public profiles.</p>
             </a>
             @endif
-
-            <!-- All-in-One -->
-            <div class="feature-card p-6 rounded-2xl bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-200 dark:border-violet-800 group">
-                <div class="w-14 h-14 rounded-xl instagram-gradient flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                </div>
-                <h3 class="font-bold text-gray-900 dark:text-white text-lg mb-2">All-in-One</h3>
-                <p class="text-gray-600 dark:text-gray-400 text-sm">This page supports all content types. Just paste any URL!</p>
-            </div>
         </div>
     </div>
 </section>
